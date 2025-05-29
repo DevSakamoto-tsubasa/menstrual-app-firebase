@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>初期設定 - 生理日共有アプリ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #ffeef8 0%, #ffe8f3 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ff6b9d 0%, #ff8ba8 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .form-section {
+            padding: 30px 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .form-group .description {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-control {
+            width: 80px;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 18px;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #ff6b9d;
+        }
+        
+        .unit {
+            font-weight: 600;
+            color: #666;
+        }
+        
+        .range-info {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+        
+        .notification-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: #ccc;
+            border-radius: 13px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .toggle-switch.active {
+            background: #ff6b9d;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+        
+        .toggle-switch.active .toggle-slider {
+            transform: translateX(24px);
+        }
+        
+        .btn-primary {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #ff6b9d 0%, #ff8ba8 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #ff6b9d;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .success-message {
+            display: none;
+            text-align: center;
+            padding: 30px 20px;
+        }
+        
+        .success-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        .error-message {
+            display: none;
+            background: #ffe6e6;
+            color: #d63031;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .debug-info {
+            display: none;
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 12px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌸 初期設定</h1>
+            <p>あなたに合わせた設定を行います</p>
+        </div>
+        
+        <div id="setupForm" class="form-section">
+            <div class="form-group">
+                <label for="cycle">生理周期</label>
+                <div class="description">前回の生理開始日から次の生理開始日までの日数</div>
+                <div class="input-group">
+                    <input type="number" id="cycle" class="form-control" value="28" min="21" max="35">
+                    <span class="unit">日</span>
+                </div>
+                <div class="range-info">21〜35日の範囲で設定してください</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="period">生理期間</label>
+                <div class="description">生理が続く日数</div>
+                <div class="input-group">
+                    <input type="number" id="period" class="form-control" value="5" min="3" max="7">
+                    <span class="unit">日</span>
+                </div>
+                <div class="range-info">3〜7日の範囲で設定してください</div>
+            </div>
+            
+            <div class="form-group">
+                <label>通知設定</label>
+                <div class="description">パートナーからの通知や予測日の通知を受け取る</div>
+                <div class="notification-toggle">
+                    <span>通知を受け取る</span>
+                    <div class="toggle-switch active" id="notificationToggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="error-message" id="errorMessage">
+                <!-- エラーメッセージがここに表示されます -->
+            </div>
+            
+            <div class="debug-info" id="debugInfo">
+                <!-- デバッグ情報がここに表示されます -->
+            </div>
+            
+            <button type="button" class="btn-primary" onclick="saveSettings()">
+                設定を保存する
+            </button>
+        </div>
+        
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <p>設定を保存しています...</p>
+        </div>
+        
+        <div id="success" class="success-message">
+            <div class="success-icon">🎉</div>
+            <h2>設定完了！</h2>
+            <p>LINEに戻って「開始日を入力」から記録を始めましょう</p>
+        </div>
+    </div>
+
+    <script>
+        // URLパラメータからトークンを取得
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        
+        // デバッグ情報表示
+        function showDebugInfo(info) {
+            const debugDiv = document.getElementById('debugInfo');
+            debugDiv.innerHTML = JSON.stringify(info, null, 2);
+            debugDiv.style.display = 'block';
+        }
+        
+        // エラーメッセージ表示
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.innerHTML = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        // エラーメッセージ非表示
+        function hideError() {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.style.display = 'none';
+        }
+
+        // 通知トグル
+        document.getElementById('notificationToggle').addEventListener('click', function() {
+            this.classList.toggle('active');
+        });
+
+        // 設定保存
+        window.saveSettings = async function() {
+            console.log('=== saveSettings called ===');
+            
+            hideError();
+            
+            const cycle = parseInt(document.getElementById('cycle').value);
+            const period = parseInt(document.getElementById('period').value);
+            const notifications = document.getElementById('notificationToggle').classList.contains('active');
+
+            console.log('Form values:', { cycle, period, notifications });
+
+            // バリデーション
+            if (cycle < 21 || cycle > 35) {
+                showError('生理周期は21〜35日の範囲で入力してください');
+                return;
+            }
+
+            if (period < 3 || period > 7) {
+                showError('生理期間は3〜7日の範囲で入力してください');
+                return;
+            }
+
+            if (!token) {
+                showError('無効なアクセスです。LINEから正しいリンクでアクセスしてください。');
+                console.error('Token not found in URL');
+                return;
+            }
+
+            // ローディング表示
+            document.getElementById('setupForm').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+
+            try {
+                const requestData = {
+                    token: token,
+                    settings: {
+                        cycle: cycle,
+                        period: period,
+                        notifications: notifications
+                    }
+                };
+                
+                console.log('Request data:', JSON.stringify(requestData, null, 2));
+                
+                // API呼び出し
+                const response = await fetch('/api/saveInitialSettings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+
+                const responseData = await response.json();
+                console.log('Response data:', JSON.stringify(responseData, null, 2));
+
+                if (response.ok && responseData.success) {
+                    // 成功表示
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('success').style.display = 'block';
+
+                    // 3秒後にLINEアプリに戻る
+                    setTimeout(() => {
+                        window.close();
+                    }, 3000);
+                } else {
+                    throw new Error(responseData.message || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                
+                // エラー詳細を表示
+                showError(`設定の保存に失敗しました: ${error.message}`);
+                showDebugInfo({
+                    error: error.message,
+                    stack: error.stack,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // フォームに戻る
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('setupForm').style.display = 'block';
+            }
+        };
+    </script>
+</body>
+</html>

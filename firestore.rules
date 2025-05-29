@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 開発中は全てのアクセスを許可（後で制限します）
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カレンダー - 生理日共有アプリ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #ffeef8 0%, #ffe8f3 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 15px 15px 0 0;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .nav-button {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+        
+        .nav-button:hover {
+            background: #f0f0f0;
+        }
+        
+        .current-month {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .calendar-container {
+            background: white;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+        }
+        
+        .day-header {
+            background: #f8f9fa;
+            padding: 12px 0;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .calendar-day {
+            aspect-ratio: 1;
+            border: 1px solid #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.3s;
+        }
+        
+        .calendar-day:hover {
+            background: #f8f9fa;
+        }
+        
+        .day-number {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            z-index: 2;
+        }
+        
+        .calendar-day.other-month .day-number {
+            color: #ccc;
+        }
+        
+        .calendar-day.today {
+            background: #e3f2fd;
+            font-weight: 600;
+        }
+        
+        .calendar-day.today .day-number {
+            color: #1976d2;
+        }
+        
+        /* 生理日のマーキング */
+        .calendar-day.period {
+            background: linear-gradient(135deg, #ffebee, #ffc1cc);
+        }
+        
+        .calendar-day.period .day-number {
+            color: #d32f2f;
+            font-weight: 600;
+        }
+        
+        .calendar-day.period::before {
+            content: '🩸';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 10px;
+        }
+        
+        /* 排卵日のマーキング */
+        .calendar-day.ovulation {
+            background: linear-gradient(135deg, #fff8e1, #ffecb3);
+        }
+        
+        .calendar-day.ovulation .day-number {
+            color: #f57c00;
+            font-weight: 600;
+        }
+        
+        .calendar-day.ovulation::before {
+            content: '🥚';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 10px;
+        }
+        
+        /* 予測期間のマーキング */
+        .calendar-day.predicted-period {
+            background: linear-gradient(135deg, #fce4ec, #f8bbd9);
+            border: 2px dashed #e91e63;
+        }
+        
+        .calendar-day.predicted-period .day-number {
+            color: #ad1457;
+        }
+        
+        .calendar-day.predicted-ovulation {
+            background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+            border: 2px dashed #ff9800;
+        }
+        
+        .calendar-day.predicted-ovulation .day-number {
+            color: #e65100;
+        }
+        
+        /* 妊娠可能期間 */
+        .calendar-day.fertile {
+            background: linear-gradient(135deg, #f3e5f5, #e1bee7);
+        }
+        
+        .calendar-day.fertile .day-number {
+            color: #7b1fa2;
+        }
+        
+        .legend {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .legend-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .legend-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        
+        .legend-period { background: linear-gradient(135deg, #ffebee, #ffc1cc); }
+        .legend-ovulation { background: linear-gradient(135deg, #fff8e1, #ffecb3); }
+        .legend-predicted { background: #f0f0f0; border: 2px dashed #999; }
+        .legend-fertile { background: linear-gradient(135deg, #f3e5f5, #e1bee7); }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #ff6b9d;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .day-detail-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 300px;
+            margin: 50% auto 0;
+            transform: translateY(-50%);
+        }
+        
+        .modal-header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .modal-date {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .modal-info {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+        }
+        
+        .modal-close {
+            background: #ff6b9d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            margin-top: 15px;
+            width: 100%;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <p>カレンダーを読み込んでいます...</p>
+        </div>
+
+        <div id="calendar-content" style="display: none;">
+            <div class="header">
+                <button class="nav-button" onclick="changeMonth(-1)">←</button>
+                <div class="current-month" id="currentMonth">2024年12月</div>
+                <button class="nav-button" onclick="changeMonth(1)">→</button>
+            </div>
+            
+            <div class="calendar-container">
+                <div class="calendar-grid">
+                    <div class="day-header">日</div>
+                    <div class="day-header">月</div>
+                    <div class="day-header">火</div>
+                    <div class="day-header">水</div>
+                    <div class="day-header">木</div>
+                    <div class="day-header">金</div>
+                    <div class="day-header">土</div>
+                </div>
+                <div class="calendar-grid" id="calendarGrid">
+                    <!-- JavaScriptで動的生成 -->
+                </div>
+            </div>
+            
+            <div class="legend">
+                <div class="legend-title">📅 カレンダー凡例</div>
+                <div class="legend-grid">
+                    <div class="legend-item">
+                        <div class="legend-color legend-period"></div>
+                        <span>生理日 🩸</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-ovulation"></div>
+                        <span>排卵日 🥚</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-predicted"></div>
+                        <span>予測日 📅</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-fertile"></div>
+                        <span>妊娠可能期間 💕</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 日付詳細モーダル -->
+    <div id="dayModal" class="day-detail-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-date" id="modalDate">12月25日</div>
+            </div>
+            <div class="modal-info" id="modalInfo">
+                <!-- 日付の詳細情報 -->
+            </div>
+            <button class="modal-close" onclick="closeDayModal()">閉じる</button>
+        </div>
+    </div>
+
+    <script>
+        let currentDate = new Date();
+        let userData = null;
+
+        // 月を変更
+        function changeMonth(direction) {
+            currentDate.setMonth(currentDate.getMonth() + direction);
+            updateCalendar();
+        }
+
+        // カレンダーを更新
+        function updateCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            // ヘッダー更新
+            document.getElementById('currentMonth').textContent = 
+                `${year}年${month + 1}月`;
+            
+            // カレンダーグリッド生成
+            generateCalendarGrid(year, month);
+        }
+
+        // カレンダーグリッド生成
+        function generateCalendarGrid(year, month) {
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+            
+            const today = new Date();
+            
+            // 6週間分のカレンダーを生成
+            for (let i = 0; i < 42; i++) {
+                const cellDate = new Date(startDate);
+                cellDate.setDate(startDate.getDate() + i);
+                
+                const day = document.createElement('div');
+                day.className = 'calendar-day';
+                day.onclick = () => showDayDetail(cellDate);
+                
+                // 日付番号
+                const dayNumber = document.createElement('span');
+                dayNumber.className = 'day-number';
+                dayNumber.textContent = cellDate.getDate();
+                day.appendChild(dayNumber);
+                
+                // 月判定
+                if (cellDate.getMonth() !== month) {
+                    day.classList.add('other-month');
+                }
+                
+                // 今日判定
+                if (cellDate.toDateString() === today.toDateString()) {
+                    day.classList.add('today');
+                }
+                
+                // データに基づくマーキング
+                if (userData) {
+                    markCalendarDay(day, cellDate);
+                }
+                
+                grid.appendChild(day);
+            }
+        }
+
+        // カレンダー日付をマーキング
+        function markCalendarDay(dayElement, date) {
+            if (!userData || !userData.records) return;
+            
+            const dateStr = date.toISOString().split('T')[0];
+            
+            // 実際の生理記録をチェック
+            for (const record of userData.records) {
+                const startDate = new Date(record.startDate);
+                const endDate = new Date(record.endDate);
+                
+                if (date >= startDate && date <= endDate) {
+                    dayElement.classList.add('period');
+                    return;
+                }
+            }
+            
+            // 予測データをチェック
+            if (userData.predictions) {
+                // 次回生理予測
+                if (userData.predictions.nextPeriod) {
+                    const nextStart = new Date(userData.predictions.nextPeriod.startDate);
+                    const nextEnd = new Date(userData.predictions.nextPeriod.endDate);
+                    
+                    if (date >= nextStart && date <= nextEnd) {
+                        dayElement.classList.add('predicted-period');
+                        return;
+                    }
+                }
+                
+                // 排卵日予測
+                if (userData.predictions.ovulation) {
+                    const ovulationDate = new Date(userData.predictions.ovulation.date);
+                    
+                    if (date.toDateString() === ovulationDate.toDateString()) {
+                        dayElement.classList.add('ovulation');
+                        return;
+                    }
+                    
+                    // 妊娠可能期間
+                    const fertileStart = new Date(userData.predictions.ovulation.fertileStart);
+                    const fertileEnd = new Date(userData.predictions.ovulation.fertileEnd);
+                    
+                    if (date >= fertileStart && date <= fertileEnd) {
+                        dayElement.classList.add('fertile');
+                        return;
+                    }
+                }
+            }
+        }
+
+        // 日付詳細を表示
+        function showDayDetail(date) {
+            const modal = document.getElementById('dayModal');
+            const modalDate = document.getElementById('modalDate');
+            const modalInfo = document.getElementById('modalInfo');
+            
+            modalDate.textContent = date.toLocaleDateString('ja-JP', {
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            // 詳細情報を生成
+            let info = getDayDetailInfo(date);
+            modalInfo.innerHTML = info;
+            
+            modal.style.display = 'block';
+        }
+
+        // 日付の詳細情報を取得
+        function getDayDetailInfo(date) {
+            if (!userData) return '情報を読み込み中...';
+            
+            let info = [];
+            const dateStr = date.toISOString().split('T')[0];
+            
+            // 実際の記録をチェック
+            for (const record of userData.records || []) {
+                const startDate = new Date(record.startDate);
+                const endDate = new Date(record.endDate);
+                
+                if (date >= startDate && date <= endDate) {
+                    const dayNumber = Math.floor((date - startDate) / (1000 * 60 * 60 * 24)) + 1;
+                    info.push(`🩸 生理 ${dayNumber}日目`);
+                    info.push(`期間: ${startDate.toLocaleDateString('ja-JP')} 〜 ${endDate.toLocaleDateString('ja-JP')}`);
+                    break;
+                }
+            }
+            
+            // 予測情報をチェック
+            if (userData.predictions) {
+                // 次回生理予測
+                if (userData.predictions.nextPeriod) {
+                    const nextStart = new Date(userData.predictions.nextPeriod.startDate);
+                    const nextEnd = new Date(userData.predictions.nextPeriod.endDate);
+                    
+                    if (date >= nextStart && date <= nextEnd) {
+                        const dayNumber = Math.floor((date - nextStart) / (1000 * 60 * 60 * 24)) + 1;
+                        info.push(`📅 生理予測 ${dayNumber}日目`);
+                        info.push(`予測期間: ${nextStart.toLocaleDateString('ja-JP')} 〜 ${nextEnd.toLocaleDateString('ja-JP')}`);
+                    }
+                }
+                
+                // 排卵日予測
+                if (userData.predictions.ovulation) {
+                    const ovulationDate = new Date(userData.predictions.ovulation.date);
+                    
+                    if (date.toDateString() === ovulationDate.toDateString()) {
+                        info.push(`🥚 排卵予定日`);
+                        info.push(`妊娠しやすい時期です`);
+                    }
+                    
+                    // 妊娠可能期間
+                    const fertileStart = new Date(userData.predictions.ovulation.fertileStart);
+                    const fertileEnd = new Date(userData.predictions.ovulation.fertileEnd);
+                    
+                    if (date >= fertileStart && date <= fertileEnd && 
+                        date.toDateString() !== ovulationDate.toDateString()) {
+                        info.push(`💕 妊娠可能期間`);
+                        info.push(`排卵日前後の妊娠しやすい時期です`);
+                    }
+                }
+            }
+            
+            // 今日の場合、現在の状態を追加
+            const today = new Date();
+            if (date.toDateString() === today.toDateString()) {
+                info.unshift(`📍 今日`);
+                
+                if (userData.currentPhase) {
+                    info.push(`${userData.currentPhase.emoji} ${userData.currentPhase.description}`);
+                }
+            }
+            
+            if (info.length === 0) {
+                info.push('特別な予定はありません');
+            }
+            
+            return info.join('<br>');
+        }
+
+        // モーダルを閉じる
+        function closeDayModal() {
+            document.getElementById('dayModal').style.display = 'none';
+        }
+
+        // モーダル外クリックで閉じる
+        document.getElementById('dayModal').onclick = function(e) {
+            if (e.target === this) {
+                closeDayModal();
+            }
+        };
+
+        // データ読み込み
+        async function loadCalendarData() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const token = urlParams.get('token');
+                
+                if (!token) {
+                    throw new Error('認証トークンが見つかりません');
+                }
+
+                const response = await fetch(`/api/getCalendarData?token=${token}`);
+                if (!response.ok) {
+                    throw new Error('データの取得に失敗しました');
+                }
+
+                userData = await response.json();
+                
+                // カレンダーを更新
+                updateCalendar();
+                
+                // 表示
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('calendar-content').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading calendar data:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div class="error-message">
+                        データの読み込みに失敗しました。<br>
+                        LINEボットから正しいリンクでアクセスしてください。
+                    </div>
+                `;
+            }
+        }
+
+        // ページ読み込み時にデータを取得
+        document.addEventListener('DOMContentLoaded', loadCalendarData);
+    </script>
+</body>
+</html>

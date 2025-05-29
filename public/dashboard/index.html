@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>現在の状況 - 生理日共有アプリ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #ffeef8 0%, #ffe8f3 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .current-phase {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .phase-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .phase-description {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .timeline-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .timeline-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .timeline-item:last-child {
+            border-bottom: none;
+        }
+        
+        .timeline-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 18px;
+        }
+        
+        .timeline-content {
+            flex: 1;
+        }
+        
+        .timeline-date {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .timeline-description {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+        
+        .timeline-days {
+            font-size: 12px;
+            color: #999;
+            white-space: nowrap;
+        }
+        
+        .period-active {
+            background: linear-gradient(135deg, #ff6b9d, #ff8ba8);
+            color: white;
+        }
+        
+        .ovulation-active {
+            background: linear-gradient(135deg, #ffd93d, #ffed4e);
+            color: #333;
+        }
+        
+        .phase-normal {
+            background: linear-gradient(135deg, #e8f5e8, #f0f8f0);
+            color: #333;
+        }
+        
+        .advice-card {
+            background: linear-gradient(135deg, #f8f9ff, #e8ecff);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .advice-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .advice-list {
+            list-style: none;
+        }
+        
+        .advice-list li {
+            padding: 5px 0;
+            font-size: 14px;
+            color: #666;
+            position: relative;
+            padding-left: 20px;
+        }
+        
+        .advice-list li:before {
+            content: '•';
+            color: #ff6b9d;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #ff6b9d;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #ffe6e6;
+            color: #d63031;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .no-data-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <p>データを読み込んでいます...</p>
+        </div>
+
+        <div id="content" style="display: none;">
+            <div class="header">
+                <div class="current-phase" id="phaseEmoji">🌸</div>
+                <div class="phase-title" id="phaseTitle">黄体期</div>
+                <div class="phase-description" id="phaseDescription">次の生理まであと7日</div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📅</div>
+                    <div class="stat-value" id="daysSinceStart">15</div>
+                    <div class="stat-label">生理開始から</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⏰</div>
+                    <div class="stat-value" id="daysUntilNext">7</div>
+                    <div class="stat-label">次回まで</div>
+                </div>
+            </div>
+
+            <div class="timeline-card">
+                <div class="timeline-title">📊 今後の予定</div>
+                <div id="timeline">
+                    <!-- JavaScriptで動的生成 -->
+                </div>
+            </div>
+
+            <div class="advice-card">
+                <div class="advice-title">💡 今日のアドバイス</div>
+                <ul class="advice-list" id="adviceList">
+                    <!-- JavaScriptで動的生成 -->
+                </ul>
+            </div>
+        </div>
+
+        <div id="error" style="display: none;">
+            <div class="error-message">
+                データの読み込みに失敗しました。<br>
+                LINEボットから正しいリンクでアクセスしてください。
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 周期段階の計算
+        function getCurrentCyclePhase(lastPeriodStart, period, cycle) {
+            const today = new Date();
+            const daysSinceStart = Math.floor((today - lastPeriodStart) / (1000 * 60 * 60 * 24));
+            
+            let phase, description, emoji;
+            
+            if (daysSinceStart < period) {
+                phase = 'menstrual';
+                description = '生理中';
+                emoji = '🩸';
+            } else if (daysSinceStart < 13) {
+                phase = 'follicular';
+                description = '卵胞期';
+                emoji = '🌱';
+            } else if (daysSinceStart >= 13 && daysSinceStart <= 16) {
+                phase = 'ovulation';
+                description = '排卵期';
+                emoji = '🥚';
+            } else if (daysSinceStart < cycle) {
+                phase = 'luteal';
+                description = '黄体期';
+                emoji = '🌸';
+            } else {
+                phase = 'overdue';
+                description = '生理予定日超過';
+                emoji = '⏰';
+            }
+            
+            return { phase, description, emoji, daysSinceStart };
+        }
+
+        // タイムライン生成
+        function generateTimeline(lastPeriodStart, settings) {
+            const timeline = [];
+            const today = new Date();
+            
+            // 次回生理予定日
+            const nextPeriod = new Date(lastPeriodStart);
+            nextPeriod.setDate(lastPeriodStart.getDate() + settings.cycle);
+            
+            // 排卵予定日
+            const ovulationDate = new Date(nextPeriod);
+            ovulationDate.setDate(nextPeriod.getDate() - 14);
+            
+            const formatDate = (date) => {
+                return date.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+            };
+            
+            const getDaysFromToday = (date) => {
+                const diff = Math.ceil((date - today) / (1000 * 60 * 60 * 24));
+                if (diff === 0) return '今日';
+                if (diff === 1) return '明日';
+                if (diff > 0) return `あと${diff}日`;
+                return `${Math.abs(diff)}日前`;
+            };
+            
+            // 排卵日
+            if (ovulationDate >= today) {
+                timeline.push({
+                    icon: '🥚',
+                    date: formatDate(ovulationDate),
+                    description: '排卵予定日',
+                    days: getDaysFromToday(ovulationDate),
+                    class: ovulationDate.toDateString() === today.toDateString() ? 'ovulation-active' : 'phase-normal'
+                });
+            }
+            
+            // 次回生理
+            timeline.push({
+                icon: '🩸',
+                date: formatDate(nextPeriod),
+                description: '次回生理予定日',
+                days: getDaysFromToday(nextPeriod),
+                class: nextPeriod <= today ? 'period-active' : 'phase-normal'
+            });
+            
+            return timeline;
+        }
+
+        // アドバイス生成
+        function generateAdvice(phase) {
+            const adviceMap = {
+                menstrual: [
+                    '鉄分を意識した食事を摂りましょう',
+                    '温かい飲み物でリラックス',
+                    '無理をせず、十分な休息を'
+                ],
+                follicular: [
+                    '運動を始めるのに最適な時期です',
+                    '新しい挑戦をしてみましょう',
+                    'エネルギーが高まる時期です'
+                ],
+                ovulation: [
+                    '水分補給を忘れずに',
+                    '基礎体温の変化に注意',
+                    '妊娠しやすい時期です'
+                ],
+                luteal: [
+                    'カルシウムとマグネシウムを摂取',
+                    'ストレスを溜めないように',
+                    'PMSの症状に注意しましょう'
+                ],
+                overdue: [
+                    '体調の変化に注意してください',
+                    'ストレスが影響している可能性',
+                    '不安な場合は医療機関へ'
+                ]
+            };
+            
+            return adviceMap[phase] || ['健康的な生活を心がけましょう'];
+        }
+
+        // データなしの表示
+        function showNoDataMessage() {
+            const content = document.getElementById('content');
+            content.innerHTML = `
+                <div class="header">
+                    <div class="current-phase">📝</div>
+                    <div class="phase-title">記録なし</div>
+                    <div class="phase-description">まだ生理日の記録がありません</div>
+                </div>
+                <div class="advice-card">
+                    <div class="advice-title">💡 始めましょう</div>
+                    <ul class="advice-list">
+                        <li>LINEで「開始日を入力」と送信してください</li>
+                        <li>最初の記録から予測が始まります</li>
+                        <li>継続的な記録で精度が向上します</li>
+                    </ul>
+                </div>
+            `;
+            content.style.display = 'block';
+        }
+
+        // データ読み込み
+        async function loadDashboardData() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const token = urlParams.get('token');
+                
+                if (!token) {
+                    throw new Error('認証トークンが見つかりません');
+                }
+
+                const response = await fetch(`/api/getDashboardData?token=${token}`);
+                if (!response.ok) {
+                    throw new Error('データの取得に失敗しました');
+                }
+
+                const data = await response.json();
+                
+                // データがない場合
+                if (!data.hasRecords) {
+                    document.getElementById('loading').style.display = 'none';
+                    showNoDataMessage();
+                    return;
+                }
+
+                // データを表示
+                const lastPeriodStart = new Date(data.lastRecord.startDate);
+                const phaseInfo = getCurrentCyclePhase(lastPeriodStart, data.settings.period, data.settings.cycle);
+                const timeline = generateTimeline(lastPeriodStart, data.settings);
+                const advice = generateAdvice(phaseInfo.phase);
+
+                // フェーズ情報
+                document.getElementById('phaseEmoji').textContent = phaseInfo.emoji;
+                document.getElementById('phaseTitle').textContent = phaseInfo.description;
+                
+                const daysUntilNext = data.settings.cycle - phaseInfo.daysSinceStart;
+                if (daysUntilNext > 0) {
+                    document.getElementById('phaseDescription').textContent = `次の生理まであと${daysUntilNext}日`;
+                } else {
+                    document.getElementById('phaseDescription').textContent = '生理予定日を過ぎています';
+                }
+
+                // 統計情報
+                document.getElementById('daysSinceStart').textContent = phaseInfo.daysSinceStart;
+                document.getElementById('daysUntilNext').textContent = Math.max(0, daysUntilNext);
+
+                // タイムライン
+                const timelineHtml = timeline.map(item => `
+                    <div class="timeline-item">
+                        <div class="timeline-icon ${item.class}">
+                            ${item.icon}
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-date">${item.date}</div>
+                            <div class="timeline-description">${item.description}</div>
+                        </div>
+                        <div class="timeline-days">${item.days}</div>
+                    </div>
+                `).join('');
+                document.getElementById('timeline').innerHTML = timelineHtml;
+
+                // アドバイス
+                const adviceHtml = advice.map(item => `<li>${item}</li>`).join('');
+                document.getElementById('adviceList').innerHTML = adviceHtml;
+
+                // 表示
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+            }
+        }
+
+        // ページ読み込み時にデータを取得
+        document.addEventListener('DOMContentLoaded', loadDashboardData);
+    </script>
+</body>
+</html>

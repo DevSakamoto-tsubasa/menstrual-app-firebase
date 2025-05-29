@@ -1,4 +1,4 @@
-// functions/src/handlers/webHandler.js - デバッグ機能強化版
+// functions/src/handlers/webHandler.js - LIFF+トークン両対応版
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
@@ -166,7 +166,7 @@ const saveInitialSettings = functions
   });
 
 /**
- * ダッシュボードデータ取得API (デバッグ強化版)
+ * ダッシュボードデータ取得API (LIFF + トークン両対応版)
  */
 const getDashboardData = functions
   .region('asia-northeast1')
@@ -186,17 +186,27 @@ const getDashboardData = functions
         return res.status(200).send('');
       }
       
-      const token = req.query.token;
-      console.log('Token from query:', token ? 'Present' : 'Missing');
+      let userId;
       
-      // トークン検証
-      const tokenData = verifyToken(token);
-      if (!tokenData) {
-        console.log('Token verification failed');
-        return res.status(401).json({ error: 'Invalid or expired token' });
+      // 🔧 userIdとtokenの両方に対応
+      if (req.query.userId) {
+        // LIFF経由のアクセス
+        userId = req.query.userId;
+        console.log('LIFF access - User ID:', userId);
+      } else if (req.query.token) {
+        // トークン経由のアクセス
+        const tokenData = verifyToken(req.query.token);
+        if (!tokenData) {
+          console.log('Token verification failed');
+          return res.status(401).json({ error: 'Invalid or expired token' });
+        }
+        userId = tokenData.userId;
+        console.log('Token access - User ID:', userId);
+      } else {
+        console.log('Neither userId nor token provided');
+        return res.status(400).json({ error: 'User ID or token required' });
       }
       
-      const { userId } = tokenData;
       console.log('Getting dashboard data for user:', userId);
       
       // ユーザー設定取得
@@ -251,7 +261,7 @@ const getDashboardData = functions
   });
 
 /**
- * カレンダーデータ取得API (デバッグ強化版)
+ * カレンダーデータ取得API (LIFF + トークン両対応版)
  */
 const getCalendarData = functions
   .region('asia-northeast1')
@@ -268,15 +278,27 @@ const getCalendarData = functions
         return res.status(200).send('');
       }
       
-      const token = req.query.token;
+      let userId;
       
-      // トークン検証
-      const tokenData = verifyToken(token);
-      if (!tokenData) {
-        return res.status(401).json({ error: 'Invalid or expired token' });
+      // 🔧 userIdとtokenの両方に対応
+      if (req.query.userId) {
+        // LIFF経由のアクセス
+        userId = req.query.userId;
+        console.log('LIFF access - User ID:', userId);
+      } else if (req.query.token) {
+        // トークン経由のアクセス
+        const tokenData = verifyToken(req.query.token);
+        if (!tokenData) {
+          console.log('Token verification failed');
+          return res.status(401).json({ error: 'Invalid or expired token' });
+        }
+        userId = tokenData.userId;
+        console.log('Token access - User ID:', userId);
+      } else {
+        console.log('Neither userId nor token provided');
+        return res.status(400).json({ error: 'User ID or token required' });
       }
       
-      const { userId } = tokenData;
       console.log('Getting calendar data for user:', userId);
       
       // ユーザー設定とすべての記録を取得
@@ -339,7 +361,7 @@ const getCalendarData = functions
   });
 
 /**
- * 設定更新API (デバッグ強化版)
+ * 設定更新API (LIFF + トークン両対応版)
  */
 const updateWebSettings = functions
   .region('asia-northeast1')
@@ -360,15 +382,26 @@ const updateWebSettings = functions
         return res.status(405).json({ error: 'Method not allowed' });
       }
       
-      const { token, settings } = req.body;
+      let userId;
+      const { token, userId: requestUserId, settings } = req.body;
       
-      // トークン検証
-      const tokenData = verifyToken(token);
-      if (!tokenData) {
-        return res.status(401).json({ error: 'Invalid or expired token' });
+      // 🔧 userIdとtokenの両方に対応
+      if (requestUserId) {
+        // LIFF経由のアクセス
+        userId = requestUserId;
+        console.log('LIFF access - User ID:', userId);
+      } else if (token) {
+        // トークン経由のアクセス
+        const tokenData = verifyToken(token);
+        if (!tokenData) {
+          return res.status(401).json({ error: 'Invalid or expired token' });
+        }
+        userId = tokenData.userId;
+        console.log('Token access - User ID:', userId);
+      } else {
+        return res.status(400).json({ error: 'User ID or token required' });
       }
       
-      const { userId } = tokenData;
       console.log('Updating settings for user:', userId);
       
       // 設定更新

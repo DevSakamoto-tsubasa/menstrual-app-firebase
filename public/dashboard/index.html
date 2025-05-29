@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>現在の状況 - 生理日共有アプリ</title>
+    <!-- LIFF SDK -->
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         * {
             margin: 0;
@@ -230,6 +232,16 @@
             font-size: 48px;
             margin-bottom: 15px;
         }
+        
+        .debug-info {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 12px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
     </style>
 </head>
 <body>
@@ -280,9 +292,20 @@
                 LINEボットから正しいリンクでアクセスしてください。
             </div>
         </div>
+
+        <div id="debug" class="debug-info" style="display: none;">
+            <!-- デバッグ情報 -->
+        </div>
     </div>
 
     <script>
+        // デバッグ情報表示
+        function showDebug(info) {
+            const debugDiv = document.getElementById('debug');
+            debugDiv.textContent = JSON.stringify(info, null, 2);
+            debugDiv.style.display = 'block';
+        }
+
         // 周期段階の計算
         function getCurrentCyclePhase(lastPeriodStart, period, cycle) {
             const today = new Date();
@@ -396,6 +419,57 @@
             return adviceMap[phase] || ['健康的な生活を心がけましょう'];
         }
 
+        // データ表示
+        function displayDashboardData(data) {
+            if (!data.hasRecords) {
+                showNoDataMessage();
+                return;
+            }
+
+            const lastPeriodStart = new Date(data.lastRecord.startDate);
+            const phaseInfo = getCurrentCyclePhase(lastPeriodStart, data.settings.period, data.settings.cycle);
+            const timeline = generateTimeline(lastPeriodStart, data.settings);
+            const advice = generateAdvice(phaseInfo.phase);
+
+            // フェーズ情報
+            document.getElementById('phaseEmoji').textContent = phaseInfo.emoji;
+            document.getElementById('phaseTitle').textContent = phaseInfo.description;
+            
+            const daysUntilNext = data.settings.cycle - phaseInfo.daysSinceStart;
+            if (daysUntilNext > 0) {
+                document.getElementById('phaseDescription').textContent = `次の生理まであと${daysUntilNext}日`;
+            } else {
+                document.getElementById('phaseDescription').textContent = '生理予定日を過ぎています';
+            }
+
+            // 統計情報
+            document.getElementById('daysSinceStart').textContent = phaseInfo.daysSinceStart;
+            document.getElementById('daysUntilNext').textContent = Math.max(0, daysUntilNext);
+
+            // タイムライン
+            const timelineHtml = timeline.map(item => `
+                <div class="timeline-item">
+                    <div class="timeline-icon ${item.class}">
+                        ${item.icon}
+                    </div>
+                    <div class="timeline-content">
+                        <div class="timeline-date">${item.date}</div>
+                        <div class="timeline-description">${item.description}</div>
+                    </div>
+                    <div class="timeline-days">${item.days}</div>
+                </div>
+            `).join('');
+            document.getElementById('timeline').innerHTML = timelineHtml;
+
+            // アドバイス
+            const adviceHtml = advice.map(item => `<li>${item}</li>`).join('');
+            document.getElementById('adviceList').innerHTML = adviceHtml;
+
+            // 表示
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+        }
+
         // データなしの表示
         function showNoDataMessage() {
             const content = document.getElementById('content');
@@ -417,83 +491,140 @@
             content.style.display = 'block';
         }
 
-        // データ読み込み
+        // エラー表示
+        function showAuthError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error').innerHTML = `
+                <div class="error-message">
+                    ${message}<br>
+                    <small>LIFF環境: ${typeof liff !== 'undefined' ? 'Yes' : 'No'}</small><br>
+                    <small>URL: ${window.location.href}</small>
+                </div>
+            `;
+        }
+
+// LIFF認証
+async function authenticateWithLIFF() {
+    try {
+        console.log('=== LIFF Authentication Started ===');
+        
+        // 🔧 実際のLIFF IDを設定
+        const DASHBOARD_LIFF_ID = '2007500037-qoxkazXb';
+        
+        console.log('Initializing LIFF with ID:', DASHBOARD_LIFF_ID);
+        
+        // LIFF初期化
+        await liff.init({ liffId: DASHBOARD_LIFF_ID });
+        console.log('LIFF initialized successfully');
+        
+        if (!liff.isLoggedIn()) {
+            console.log('User not logged in, redirecting to LINE login');
+            liff.login();
+            return;
+        }
+        
+        // ユーザー情報を取得
+        const profile = await liff.getProfile();
+        console.log('User profile obtained:', profile);
+        
+        showDebug({
+            liffId: DASHBOARD_LIFF_ID,
+            userId: profile.userId,
+            displayName: profile.displayName,
+            environment: 'LIFF'
+        });
+        
+        // ダッシュボードデータを取得
+        await loadDashboardDataWithUserId(profile.userId);
+        
+    } catch (error) {
+        console.error('LIFF authentication error:', error);
+        throw new Error(`LIFF認証に失敗しました: ${error.message}`);
+    }
+}
+
+        // トークン認証（既存の方法）
+        async function authenticateWithToken() {
+            console.log('=== Token Authentication Started ===');
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            
+            if (!token) {
+                throw new Error('認証トークンが見つかりません');
+            }
+            
+            showDebug({
+                token: token.substring(0, 20) + '...',
+                environment: 'Token'
+            });
+            
+            // 既存のトークンベース認証処理
+            const response = await fetch(`/api/getDashboardData?token=${token}`);
+            if (!response.ok) {
+                throw new Error('データの取得に失敗しました');
+            }
+            
+            const data = await response.json();
+            displayDashboardData(data);
+        }
+
+       // LIFF経由でダッシュボードデータを取得
+async function loadDashboardDataWithUserId(userId) {
+    try {
+        console.log('Loading dashboard data for user:', userId);
+        
+        // 🔧 既存のgetDashboardData関数を使用し、userIdパラメータで送信
+        const apiUrl = `https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net/getDashboardData?userId=${userId}`;
+        console.log('API URL:', apiUrl);
+        
+        const response = await fetch(apiUrl);
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API Error Response:', errorText);
+            throw new Error(`API Error: ${response.status} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log('Dashboard data loaded successfully:', data);
+        displayDashboardData(data);
+        
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        throw error;
+    }
+}
+
+        // メイン認証処理
         async function loadDashboardData() {
             try {
-                const urlParams = new URLSearchParams(window.location.search);
-                const token = urlParams.get('token');
+                console.log('=== Starting Authentication ===');
+                console.log('User Agent:', navigator.userAgent);
+                console.log('LIFF Available:', typeof liff !== 'undefined');
                 
-                if (!token) {
-                    throw new Error('認証トークンが見つかりません');
-                }
-
-                const response = await fetch(`/api/getDashboardData?token=${token}`);
-                if (!response.ok) {
-                    throw new Error('データの取得に失敗しました');
-                }
-
-                const data = await response.json();
-                
-                // データがない場合
-                if (!data.hasRecords) {
-                    document.getElementById('loading').style.display = 'none';
-                    showNoDataMessage();
-                    return;
-                }
-
-                // データを表示
-                const lastPeriodStart = new Date(data.lastRecord.startDate);
-                const phaseInfo = getCurrentCyclePhase(lastPeriodStart, data.settings.period, data.settings.cycle);
-                const timeline = generateTimeline(lastPeriodStart, data.settings);
-                const advice = generateAdvice(phaseInfo.phase);
-
-                // フェーズ情報
-                document.getElementById('phaseEmoji').textContent = phaseInfo.emoji;
-                document.getElementById('phaseTitle').textContent = phaseInfo.description;
-                
-                const daysUntilNext = data.settings.cycle - phaseInfo.daysSinceStart;
-                if (daysUntilNext > 0) {
-                    document.getElementById('phaseDescription').textContent = `次の生理まであと${daysUntilNext}日`;
+                // LIFF環境かどうかを判定
+                if (typeof liff !== 'undefined') {
+                    console.log('LIFF environment detected');
+                    await authenticateWithLIFF();
                 } else {
-                    document.getElementById('phaseDescription').textContent = '生理予定日を過ぎています';
+                    console.log('Non-LIFF environment, using token');
+                    await authenticateWithToken();
                 }
-
-                // 統計情報
-                document.getElementById('daysSinceStart').textContent = phaseInfo.daysSinceStart;
-                document.getElementById('daysUntilNext').textContent = Math.max(0, daysUntilNext);
-
-                // タイムライン
-                const timelineHtml = timeline.map(item => `
-                    <div class="timeline-item">
-                        <div class="timeline-icon ${item.class}">
-                            ${item.icon}
-                        </div>
-                        <div class="timeline-content">
-                            <div class="timeline-date">${item.date}</div>
-                            <div class="timeline-description">${item.description}</div>
-                        </div>
-                        <div class="timeline-days">${item.days}</div>
-                    </div>
-                `).join('');
-                document.getElementById('timeline').innerHTML = timelineHtml;
-
-                // アドバイス
-                const adviceHtml = advice.map(item => `<li>${item}</li>`).join('');
-                document.getElementById('adviceList').innerHTML = adviceHtml;
-
-                // 表示
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('content').style.display = 'block';
-
+                
             } catch (error) {
-                console.error('Error loading dashboard data:', error);
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('error').style.display = 'block';
+                console.error('Authentication failed:', error);
+                showAuthError(error.message);
             }
         }
 
         // ページ読み込み時にデータを取得
-        document.addEventListener('DOMContentLoaded', loadDashboardData);
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM Content Loaded');
+            loadDashboardData();
+        });
     </script>
 </body>
 </html>

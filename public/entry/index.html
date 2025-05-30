@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>周期設定 - 生理日共有アプリ</title>
+    <title>開始日入力 - 生理日共有アプリ</title>
     <!-- LIFF SDK -->
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
@@ -59,7 +59,84 @@
             padding: 30px 20px;
         }
         
-        .form-group {
+        .date-picker-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        
+        .date-picker-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        
+        .date-picker-description {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 20px;
+            text-align: center;
+            line-height: 1.5;
+        }
+        
+        .date-input-group {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .date-input {
+            width: 100%;
+            max-width: 200px;
+            padding: 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            text-align: center;
+            transition: border-color 0.3s;
+            font-weight: 500;
+        }
+        
+        .date-input:focus {
+            outline: none;
+            border-color: #7dd3fc;
+        }
+        
+        .quick-date-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .quick-date-btn {
+            padding: 12px;
+            background: #f8fafc;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .quick-date-btn:hover {
+            background: #e0f2fe;
+            border-color: #7dd3fc;
+        }
+        
+        .quick-date-btn.active {
+            background: #7dd3fc;
+            border-color: #0284c7;
+            color: white;
+        }
+        
+        .period-duration-card {
             background: white;
             border-radius: 12px;
             padding: 20px;
@@ -67,93 +144,44 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
         
-        .form-group label {
-            display: block;
+        .duration-title {
+            font-size: 16px;
             font-weight: 600;
             color: #374151;
-            margin-bottom: 8px;
-            font-size: 16px;
+            margin-bottom: 12px;
+            text-align: center;
         }
         
-        .form-group .description {
-            font-size: 14px;
-            color: #6b7280;
-            margin-bottom: 16px;
-            line-height: 1.5;
+        .duration-options {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
         }
         
-        .input-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 8px;
-        }
-        
-        .form-control {
-            width: 80px;
-            padding: 12px;
+        .duration-btn {
+            aspect-ratio: 1;
+            background: #f8fafc;
             border: 2px solid #e5e7eb;
             border-radius: 8px;
-            font-size: 18px;
-            text-align: center;
-            transition: border-color 0.3s;
-            font-weight: 500;
+            font-size: 16px;
+            font-weight: 600;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
-        .form-control:focus {
-            outline: none;
+        .duration-btn:hover {
+            background: #e0f2fe;
             border-color: #7dd3fc;
         }
         
-        .unit {
-            font-weight: 600;
-            color: #6b7280;
-        }
-        
-        .range-info {
-            font-size: 12px;
-            color: #9ca3af;
-            margin-top: 4px;
-        }
-        
-        .notification-toggle {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px;
-            background: #f8fafc;
-            border-radius: 10px;
-            margin-top: 10px;
-        }
-        
-        .toggle-switch {
-            position: relative;
-            width: 50px;
-            height: 26px;
-            background: #d1d5db;
-            border-radius: 13px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        
-        .toggle-switch.active {
+        .duration-btn.active {
             background: #7dd3fc;
-        }
-        
-        .toggle-slider {
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 22px;
-            height: 22px;
-            background: white;
-            border-radius: 50%;
-            transition: transform 0.3s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .toggle-switch.active .toggle-slider {
-            transform: translateX(24px);
+            border-color: #0284c7;
+            color: white;
         }
         
         .btn-primary {
@@ -222,6 +250,27 @@
             font-size: 14px;
             border: 1px solid #fecaca;
         }
+        
+        .info-card {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .info-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0369a1;
+            margin-bottom: 8px;
+        }
+        
+        .info-card-text {
+            font-size: 13px;
+            color: #0284c7;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
@@ -231,39 +280,43 @@
         </div>
         
         <div class="header">
-            <h1>⚙️ 周期設定</h1>
-            <p>あなたの生理周期を設定してください</p>
+            <h1>🌸 開始日入力</h1>
+            <p>生理開始日を記録してください</p>
         </div>
         
-        <div id="setupForm" class="form-section">
-            <div class="form-group">
-                <label for="cycle">生理周期</label>
-                <div class="description">前回の生理開始日から次の生理開始日までの日数</div>
-                <div class="input-group">
-                    <input type="number" id="cycle" class="form-control" value="28" min="18" max="45">
-                    <span class="unit">日</span>
-                </div>
-                <div class="range-info">18〜45日の範囲で設定してください</div>
+        <div id="entryForm" class="form-section">
+            <div class="info-card">
+                <div class="info-card-title">📝 記録について</div>
+                <div class="info-card-text">生理開始日を正確に記録することで、より精度の高い予測ができるようになります。</div>
             </div>
             
-            <div class="form-group">
-                <label for="period">生理期間</label>
-                <div class="description">生理が続く日数</div>
-                <div class="input-group">
-                    <input type="number" id="period" class="form-control" value="5" min="2" max="10">
-                    <span class="unit">日</span>
+            <div class="date-picker-card">
+                <div class="date-picker-title">🗓️ 生理開始日</div>
+                <div class="date-picker-description">いつから生理が始まりましたか？</div>
+                
+                <div class="date-input-group">
+                    <input type="date" id="startDateInput" class="date-input">
                 </div>
-                <div class="range-info">2〜10日の範囲で設定してください</div>
+                
+                <div class="quick-date-options">
+                    <button class="quick-date-btn" onclick="setQuickDate(0)">今日</button>
+                    <button class="quick-date-btn" onclick="setQuickDate(1)">昨日</button>
+                    <button class="quick-date-btn" onclick="setQuickDate(2)">一昨日</button>
+                    <button class="quick-date-btn" onclick="setQuickDate(3)">3日前</button>
+                </div>
             </div>
             
-            <div class="form-group">
-                <label>通知設定</label>
-                <div class="description">パートナーからの通知や予測日の通知を受け取る</div>
-                <div class="notification-toggle">
-                    <span>通知を受け取る</span>
-                    <div class="toggle-switch active" id="notificationToggle">
-                        <div class="toggle-slider"></div>
-                    </div>
+            <div class="period-duration-card">
+                <div class="duration-title">⏱️ 生理期間（予想）</div>
+                <div class="duration-options">
+                    <button class="duration-btn" onclick="setDuration(3)">3日</button>
+                    <button class="duration-btn" onclick="setDuration(4)">4日</button>
+                    <button class="duration-btn active" onclick="setDuration(5)">5日</button>
+                    <button class="duration-btn" onclick="setDuration(6)">6日</button>
+                    <button class="duration-btn" onclick="setDuration(7)">7日</button>
+                    <button class="duration-btn" onclick="setDuration(8)">8日</button>
+                    <button class="duration-btn" onclick="setDuration(9)">9日</button>
+                    <button class="duration-btn" onclick="setDuration(10)">10日</button>
                 </div>
             </div>
             
@@ -271,27 +324,35 @@
                 <!-- エラーメッセージ -->
             </div>
             
-            <button type="button" class="btn-primary" onclick="saveSettings()">
-                設定を保存する
+            <button type="button" class="btn-primary" onclick="savePeriodStart()">
+                記録を保存する
             </button>
         </div>
         
         <div id="loading" class="loading">
             <div class="loading-spinner"></div>
-            <p>設定を保存しています...</p>
+            <p>記録を保存しています...</p>
         </div>
         
         <div id="success" class="success-message">
             <div class="success-icon">✅</div>
-            <h2>設定完了！</h2>
-            <p>設定が保存されました</p>
+            <h2>記録完了！</h2>
+            <p>生理開始日が記録されました</p>
         </div>
     </div>
 
     <script>
         // グローバル変数
         let currentUser = null;
-        const SETUP_LIFF_ID = '2007500037-Vw4nPLEq'; // Setup専用LIFF ID
+        let selectedDuration = 5; // デフォルト5日
+        const DATE_ENTRY_LIFF_ID = '2007500037-vdpkmNwL'; // 開始日入力専用LIFF ID
+        
+        // 今日の日付をデフォルトに設定
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const todayString = today.toISOString().split('T')[0];
+            document.getElementById('startDateInput').value = todayString;
+        });
         
         // エラーメッセージ表示
         function showError(message) {
@@ -315,31 +376,56 @@
             userInfoDiv.style.display = 'block';
         }
 
-        // 通知トグル
-        document.getElementById('notificationToggle').addEventListener('click', function() {
-            this.classList.toggle('active');
-        });
+        // クイック日付設定
+        function setQuickDate(daysAgo) {
+            const date = new Date();
+            date.setDate(date.getDate() - daysAgo);
+            const dateString = date.toISOString().split('T')[0];
+            document.getElementById('startDateInput').value = dateString;
+            
+            // アクティブ状態の更新
+            document.querySelectorAll('.quick-date-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
 
-        // 設定保存
-        window.saveSettings = async function() {
-            console.log('=== saveSettings called ===');
+        // 期間設定
+        function setDuration(days) {
+            selectedDuration = days;
+            
+            // アクティブ状態の更新
+            document.querySelectorAll('.duration-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        // 生理開始日保存
+        window.savePeriodStart = async function() {
+            console.log('=== savePeriodStart called ===');
             
             hideError();
             
-            const cycle = parseInt(document.getElementById('cycle').value);
-            const period = parseInt(document.getElementById('period').value);
-            const notifications = document.getElementById('notificationToggle').classList.contains('active');
-
-            console.log('Form values:', { cycle, period, notifications });
-
-            // バリデーション
-            if (cycle < 18 || cycle > 45) {
-                showError('生理周期は18〜45日の範囲で入力してください');
+            const startDate = document.getElementById('startDateInput').value;
+            
+            if (!startDate) {
+                showError('開始日を選択してください');
                 return;
             }
-
-            if (period < 2 || period > 10) {
-                showError('生理期間は2〜10日の範囲で入力してください');
+            
+            // 未来の日付チェック
+            const selectedDate = new Date(startDate);
+            const today = new Date();
+            today.setHours(23, 59, 59, 999); // 今日の終わりまで許可
+            
+            if (selectedDate > today) {
+                showError('未来の日付は選択できません');
+                return;
+            }
+            
+            // 3ヶ月以上前のチェック
+            const threeMonthsAgo = new Date();
+            threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+            
+            if (selectedDate < threeMonthsAgo) {
+                showError('3ヶ月以上前の日付は選択できません');
                 return;
             }
 
@@ -349,23 +435,25 @@
             }
 
             // ローディング表示
-            document.getElementById('setupForm').style.display = 'none';
+            document.getElementById('entryForm').style.display = 'none';
             document.getElementById('loading').style.display = 'block';
 
             try {
+                // 終了日計算
+                const endDate = new Date(selectedDate);
+                endDate.setDate(selectedDate.getDate() + selectedDuration - 1);
+                
                 const requestData = {
                     userId: currentUser.userId,
-                    settings: {
-                        cycle: cycle,
-                        period: period,
-                        notifications: notifications
-                    }
+                    startDate: startDate,
+                    endDate: endDate.toISOString().split('T')[0],
+                    duration: selectedDuration
                 };
                 
                 console.log('Request data:', JSON.stringify(requestData, null, 2));
                 
-                // API呼び出し
-                const response = await fetch('https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net/saveInitialSettings', {
+                // 🔧 正しいAPIエンドポイントに修正
+                const response = await fetch('https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net/savePeriodRecord', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -375,10 +463,10 @@
 
                 console.log('Response status:', response.status);
 
-                const responseData = await response.json();
-                console.log('Response data:', JSON.stringify(responseData, null, 2));
+                if (response.ok) {
+                    const responseData = await response.json();
+                    console.log('Response data:', JSON.stringify(responseData, null, 2));
 
-                if (response.ok && responseData.success) {
                     // 成功表示
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('success').style.display = 'block';
@@ -392,17 +480,17 @@
                         }
                     }, 2000);
                 } else {
-                    throw new Error(responseData.message || `HTTP ${response.status}: ${response.statusText}`);
+                    throw new Error(`HTTP ${response.status}: サーバーエラーが発生しました`);
                 }
 
             } catch (error) {
-                console.error('Error saving settings:', error);
+                console.error('Error saving period record:', error);
                 
-                showError(`設定の保存に失敗しました: ${error.message}`);
+                showError(`記録の保存に失敗しました: ${error.message}`);
                 
                 // フォームに戻る
                 document.getElementById('loading').style.display = 'none';
-                document.getElementById('setupForm').style.display = 'block';
+                document.getElementById('entryForm').style.display = 'block';
             }
         };
 
@@ -412,7 +500,7 @@
                 console.log('Initializing LIFF...');
                 
                 await liff.init({ 
-                    liffId: SETUP_LIFF_ID,
+                    liffId: DATE_ENTRY_LIFF_ID,
                     withLoginOnExternalBrowser: true
                 });
                 
@@ -439,7 +527,7 @@
 
         // ページ読み込み時に初期化
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Setup page loaded');
+            console.log('Date entry page loaded');
             
             if (typeof liff !== 'undefined') {
                 initializeLiffAndLoadUser();

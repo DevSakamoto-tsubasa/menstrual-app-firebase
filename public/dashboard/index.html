@@ -15,23 +15,32 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #ffeef8 0%, #ffe8f3 100%);
+            background: #f8f9ff;
+            color: #333;
             min-height: 100vh;
-            padding: 20px;
         }
         
         .container {
             max-width: 400px;
             margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+        }
+        
+        .user-info {
+            background: rgba(125, 211, 252, 0.1);
+            padding: 8px 16px;
+            font-size: 12px;
+            text-align: center;
+            color: #0284c7;
+            border-bottom: 1px solid #f0f0f0;
         }
         
         .header {
             background: white;
-            border-radius: 15px;
             padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             text-align: center;
+            border-bottom: 1px solid #f0f0f0;
         }
         
         .current-phase {
@@ -54,15 +63,15 @@
         .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 15px;
+            gap: 16px;
+            margin: 20px 16px;
         }
         
         .stat-card {
             background: white;
-            border-radius: 15px;
+            border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             text-align: center;
         }
         
@@ -87,10 +96,10 @@
         
         .timeline-card {
             background: white;
-            border-radius: 15px;
+            border-radius: 12px;
             padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
         
         .timeline-title {
@@ -145,25 +154,26 @@
         }
         
         .period-active {
-            background: linear-gradient(135deg, #ff6b9d, #ff8ba8);
-            color: white;
+            background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+            color: #0284c7;
         }
         
         .ovulation-active {
-            background: linear-gradient(135deg, #ffd93d, #ffed4e);
-            color: #333;
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            color: #d97706;
         }
         
         .phase-normal {
-            background: linear-gradient(135deg, #e8f5e8, #f0f8f0);
-            color: #333;
+            background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+            color: #374151;
         }
         
         .advice-card {
-            background: linear-gradient(135deg, #f8f9ff, #e8ecff);
-            border-radius: 15px;
+            background: white;
+            border-radius: 12px;
             padding: 20px;
-            margin-bottom: 15px;
+            margin: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
         
         .advice-title {
@@ -187,7 +197,7 @@
         
         .advice-list li:before {
             content: '•';
-            color: #ff6b9d;
+            color: #7dd3fc;
             font-weight: bold;
             position: absolute;
             left: 0;
@@ -195,18 +205,18 @@
         
         .loading {
             text-align: center;
-            padding: 40px;
-            color: #666;
+            padding: 60px 20px;
+            color: #6b7280;
         }
         
         .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #ff6b9d;
+            width: 32px;
+            height: 32px;
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #7dd3fc;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
+            margin: 0 auto 16px;
         }
         
         @keyframes spin {
@@ -215,12 +225,14 @@
         }
         
         .error-message {
-            background: #ffe6e6;
-            color: #d63031;
-            padding: 15px;
-            border-radius: 10px;
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 16px;
+            border-radius: 12px;
             text-align: center;
-            margin: 20px 0;
+            margin: 20px 16px;
+            font-size: 14px;
+            border: 1px solid #fecaca;
         }
         
         .no-data {
@@ -233,19 +245,31 @@
             margin-bottom: 15px;
         }
         
-        .debug-info {
-            background: #f0f0f0;
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-            font-size: 12px;
-            font-family: monospace;
-            white-space: pre-wrap;
+        .refresh-button {
+            background: #7dd3fc;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            margin: 16px auto;
+            display: block;
+            transition: background 0.2s;
+        }
+        
+        .refresh-button:hover {
+            background: #0284c7;
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <div id="userInfo" class="user-info" style="display: none;">
+            <!-- ユーザー情報がここに表示 -->
+        </div>
+
         <div id="loading" class="loading">
             <div class="loading-spinner"></div>
             <p>データを読み込んでいます...</p>
@@ -284,27 +308,38 @@
                     <!-- JavaScriptで動的生成 -->
                 </ul>
             </div>
+
+            <button class="refresh-button" onclick="refreshData()">🔄 データを更新</button>
+        </div>
+
+        <div id="noData" style="display: none;">
+            <div class="header">
+                <div class="current-phase">📝</div>
+                <div class="phase-title">記録なし</div>
+                <div class="phase-description">まだ生理日の記録がありません</div>
+            </div>
+            <div class="advice-card">
+                <div class="advice-title">💡 始めましょう</div>
+                <ul class="advice-list">
+                    <li>LINEで「開始日を入力」と送信してください</li>
+                    <li>最初の記録から予測が始まります</li>
+                    <li>継続的な記録で精度が向上します</li>
+                </ul>
+            </div>
         </div>
 
         <div id="error" style="display: none;">
             <div class="error-message">
                 データの読み込みに失敗しました。<br>
-                LINEボットから正しいリンクでアクセスしてください。
+                <button class="refresh-button" onclick="location.reload()" style="margin-top: 10px;">🔄 再読み込み</button>
             </div>
-        </div>
-
-        <div id="debug" class="debug-info" style="display: none;">
-            <!-- デバッグ情報 -->
         </div>
     </div>
 
     <script>
-        // デバッグ情報表示
-        function showDebug(info) {
-            const debugDiv = document.getElementById('debug');
-            debugDiv.textContent = JSON.stringify(info, null, 2);
-            debugDiv.style.display = 'block';
-        }
+        // グローバル変数
+        let currentUser = null;
+        const LIFF_ID = '2007500037-w97Oo2kv';
 
         // 周期段階の計算
         function getCurrentCyclePhase(lastPeriodStart, period, cycle) {
@@ -316,7 +351,7 @@
             if (daysSinceStart < period) {
                 phase = 'menstrual';
                 description = '生理中';
-                emoji = '🩸';
+                emoji = '🌸';
             } else if (daysSinceStart < 13) {
                 phase = 'follicular';
                 description = '卵胞期';
@@ -328,7 +363,7 @@
             } else if (daysSinceStart < cycle) {
                 phase = 'luteal';
                 description = '黄体期';
-                emoji = '🌸';
+                emoji = '🌿';
             } else {
                 phase = 'overdue';
                 description = '生理予定日超過';
@@ -376,7 +411,7 @@
             
             // 次回生理
             timeline.push({
-                icon: '🩸',
+                icon: '🌸',
                 date: formatDate(nextPeriod),
                 description: '次回生理予定日',
                 days: getDaysFromToday(nextPeriod),
@@ -419,8 +454,10 @@
             return adviceMap[phase] || ['健康的な生活を心がけましょう'];
         }
 
-        // データ表示
+        // ダッシュボードデータ表示
         function displayDashboardData(data) {
+            console.log('Dashboard data:', data);
+            
             if (!data.hasRecords) {
                 showNoDataMessage();
                 return;
@@ -431,7 +468,7 @@
             const timeline = generateTimeline(lastPeriodStart, data.settings);
             const advice = generateAdvice(phaseInfo.phase);
 
-            // フェーズ情報
+            // フェーズ情報表示
             document.getElementById('phaseEmoji').textContent = phaseInfo.emoji;
             document.getElementById('phaseTitle').textContent = phaseInfo.description;
             
@@ -446,7 +483,7 @@
             document.getElementById('daysSinceStart').textContent = phaseInfo.daysSinceStart;
             document.getElementById('daysUntilNext').textContent = Math.max(0, daysUntilNext);
 
-            // タイムライン
+            // タイムライン生成
             const timelineHtml = timeline.map(item => `
                 <div class="timeline-item">
                     <div class="timeline-icon ${item.class}">
@@ -465,165 +502,111 @@
             const adviceHtml = advice.map(item => `<li>${item}</li>`).join('');
             document.getElementById('adviceList').innerHTML = adviceHtml;
 
-            // 表示
+            // 表示切り替え
             document.getElementById('loading').style.display = 'none';
             document.getElementById('content').style.display = 'block';
         }
 
         // データなしの表示
         function showNoDataMessage() {
-            const content = document.getElementById('content');
-            content.innerHTML = `
-                <div class="header">
-                    <div class="current-phase">📝</div>
-                    <div class="phase-title">記録なし</div>
-                    <div class="phase-description">まだ生理日の記録がありません</div>
-                </div>
-                <div class="advice-card">
-                    <div class="advice-title">💡 始めましょう</div>
-                    <ul class="advice-list">
-                        <li>LINEで「開始日を入力」と送信してください</li>
-                        <li>最初の記録から予測が始まります</li>
-                        <li>継続的な記録で精度が向上します</li>
-                    </ul>
-                </div>
-            `;
-            content.style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('noData').style.display = 'block';
         }
 
         // エラー表示
-        function showAuthError(message) {
+        function showError(message) {
+            console.error('Dashboard error:', message);
             document.getElementById('loading').style.display = 'none';
             document.getElementById('error').style.display = 'block';
-            document.getElementById('error').innerHTML = `
-                <div class="error-message">
-                    ${message}<br>
-                    <small>LIFF環境: ${typeof liff !== 'undefined' ? 'Yes' : 'No'}</small><br>
-                    <small>URL: ${window.location.href}</small>
-                </div>
+        }
+
+        // ユーザー情報表示
+        function showUserInfo(profile) {
+            const userInfoDiv = document.getElementById('userInfo');
+            userInfoDiv.innerHTML = `
+                👤 ${profile.displayName} さん
             `;
+            userInfoDiv.style.display = 'block';
         }
 
-// LIFF認証
-async function authenticateWithLIFF() {
-    try {
-        console.log('=== LIFF Authentication Started ===');
-        
-        // 🔧 実際のLIFF IDを設定
-        const DASHBOARD_LIFF_ID = '2007500037-qoxkazXb';
-        
-        console.log('Initializing LIFF with ID:', DASHBOARD_LIFF_ID);
-        
-        // LIFF初期化
-        await liff.init({ liffId: DASHBOARD_LIFF_ID });
-        console.log('LIFF initialized successfully');
-        
-        if (!liff.isLoggedIn()) {
-            console.log('User not logged in, redirecting to LINE login');
-            liff.login();
-            return;
-        }
-        
-        // ユーザー情報を取得
-        const profile = await liff.getProfile();
-        console.log('User profile obtained:', profile);
-        
-        showDebug({
-            liffId: DASHBOARD_LIFF_ID,
-            userId: profile.userId,
-            displayName: profile.displayName,
-            environment: 'LIFF'
-        });
-        
-        // ダッシュボードデータを取得
-        await loadDashboardDataWithUserId(profile.userId);
-        
-    } catch (error) {
-        console.error('LIFF authentication error:', error);
-        throw new Error(`LIFF認証に失敗しました: ${error.message}`);
-    }
-}
-
-        // トークン認証（既存の方法）
-        async function authenticateWithToken() {
-            console.log('=== Token Authentication Started ===');
-            
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('token');
-            
-            if (!token) {
-                throw new Error('認証トークンが見つかりません');
-            }
-            
-            showDebug({
-                token: token.substring(0, 20) + '...',
-                environment: 'Token'
-            });
-            
-            // 既存のトークンベース認証処理
-            const response = await fetch(`/api/getDashboardData?token=${token}`);
-            if (!response.ok) {
-                throw new Error('データの取得に失敗しました');
-            }
-            
-            const data = await response.json();
-            displayDashboardData(data);
-        }
-
-       // LIFF経由でダッシュボードデータを取得
-async function loadDashboardDataWithUserId(userId) {
-    try {
-        console.log('Loading dashboard data for user:', userId);
-        
-        // 🔧 既存のgetDashboardData関数を使用し、userIdパラメータで送信
-        const apiUrl = `https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net/getDashboardData?userId=${userId}`;
-        console.log('API URL:', apiUrl);
-        
-        const response = await fetch(apiUrl);
-        console.log('Response status:', response.status);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('API Error Response:', errorText);
-            throw new Error(`API Error: ${response.status} - ${errorText}`);
-        }
-        
-        const data = await response.json();
-        console.log('Dashboard data loaded successfully:', data);
-        displayDashboardData(data);
-        
-    } catch (error) {
-        console.error('Error loading dashboard data:', error);
-        throw error;
-    }
-}
-
-        // メイン認証処理
-        async function loadDashboardData() {
+        // ダッシュボードデータ取得
+        async function loadDashboardData(userId) {
             try {
-                console.log('=== Starting Authentication ===');
-                console.log('User Agent:', navigator.userAgent);
-                console.log('LIFF Available:', typeof liff !== 'undefined');
+                console.log('Loading dashboard data for user:', userId.substring(0, 8) + '...');
                 
-                // LIFF環境かどうかを判定
-                if (typeof liff !== 'undefined') {
-                    console.log('LIFF environment detected');
-                    await authenticateWithLIFF();
-                } else {
-                    console.log('Non-LIFF environment, using token');
-                    await authenticateWithToken();
+                const apiUrl = `https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net/getDashboardData?userId=${encodeURIComponent(userId)}`;
+                
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
                 }
                 
+                const data = await response.json();
+                displayDashboardData(data);
+                
             } catch (error) {
-                console.error('Authentication failed:', error);
-                showAuthError(error.message);
+                console.error('Error loading dashboard data:', error);
+                showError('データの取得に失敗しました');
             }
         }
 
-        // ページ読み込み時にデータを取得
+        // データ更新
+        function refreshData() {
+            if (currentUser) {
+                document.getElementById('content').style.display = 'none';
+                document.getElementById('noData').style.display = 'none';
+                document.getElementById('error').style.display = 'none';
+                document.getElementById('loading').style.display = 'block';
+                
+                loadDashboardData(currentUser.userId);
+            }
+        }
+
+        // LIFF初期化とデータ読み込み
+        async function initializeLiffAndLoadData() {
+            try {
+                console.log('Initializing LIFF...');
+                
+                await liff.init({ 
+                    liffId: LIFF_ID,
+                    withLoginOnExternalBrowser: true
+                });
+                
+                console.log('LIFF initialized successfully');
+                
+                if (!liff.isLoggedIn()) {
+                    console.log('User not logged in, redirecting...');
+                    liff.login();
+                    return;
+                }
+                
+                // プロフィール取得
+                const profile = await liff.getProfile();
+                console.log('User profile obtained:', profile.displayName);
+                
+                currentUser = profile;
+                showUserInfo(profile);
+                
+                // ダッシュボードデータ読み込み
+                await loadDashboardData(profile.userId);
+                
+            } catch (error) {
+                console.error('LIFF initialization error:', error);
+                showError('初期化に失敗しました');
+            }
+        }
+
+        // ページ読み込み時に初期化
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM Content Loaded');
-            loadDashboardData();
+            console.log('Dashboard page loaded');
+            
+            // LIFF環境かどうかチェック
+            if (typeof liff !== 'undefined') {
+                initializeLiffAndLoadData();
+            } else {
+                showError('LIFF SDKが読み込まれていません');
+            }
         });
     </script>
 </body>

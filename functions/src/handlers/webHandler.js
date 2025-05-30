@@ -1,8 +1,8 @@
-// functions/src/handlers/webHandler.js - LIFF+トークン両対応版
+// functions/src/handlers/webHandler.js - 最新版（新LIFF ID対応）
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const { getUserSettings, getUserRecords, userExists, updateUserSetting } = require('../utils/firestoreUtils');
+const { getUserSettings, getUserRecords, userExists, updateUserSetting, ensureUserExists } = require('../utils/firestoreUtils');
 const { getCurrentCyclePhase, calculateOvulationDate, getDaysUntilNextPeriod } = require('../utils/dateUtils');
 
 /**
@@ -52,7 +52,34 @@ function verifyToken(token) {
 }
 
 /**
- * 初期設定保存API (デバッグ強化版)
+ * ユーザーID検証とユーザー存在確認
+ * @param {string} userId - 検証するユーザーID
+ * @returns {Promise<boolean>} - 有効なユーザーIDかどうか
+ */
+async function validateAndEnsureUser(userId) {
+  try {
+    if (!userId || typeof userId !== 'string' || userId.length < 10) {
+      console.log('Invalid userId format');
+      return false;
+    }
+    
+    // ユーザー存在確認・作成
+    const exists = await userExists(userId);
+    if (!exists) {
+      console.log('User not found, creating new user');
+      await ensureUserExists(userId);
+    }
+    
+    console.log(`User validated: ${userId.substring(0, 8)}...`);
+    return true;
+  } catch (error) {
+    console.error('User validation error:', error);
+    return false;
+  }
+}
+
+/**
+ * 初期設定保存API (LIFF + トークン両対応版)
  */
 const saveInitialSettings = functions
   .region('asia-northeast1')
@@ -84,19 +111,37 @@ const saveInitialSettings = functions
         return res.status(400).json({ error: 'Request body is required' });
       }
       
-      const { token, settings } = req.body;
-      console.log('Extracted token:', token ? 'Present' : 'Missing');
-      console.log('Extracted settings:', JSON.stringify(settings, null, 2));
+      let userId;
+      const { token, userId: requestUserId, settings } = req.body;
       
-      // トークン検証
-      const tokenData = verifyToken(token);
-      if (!tokenData) {
-        console.log('Token verification failed');
-        return res.status(401).json({ error: 'Invalid or expired token' });
+      // 🔧 LIFF + トークン両対応認証
+      if (requestUserId) {
+        // LIFF経由のアクセス
+        userId = requestUserId;
+        console.log('LIFF access - User ID:', userId?.substring(0, 8) + '...');
+        
+        // ユーザーID検証
+        const isValid = await validateAndEnsureUser(userId);
+        if (!isValid) {
+          console.log('Invalid user ID from LIFF');
+          return res.status(400).json({ error: 'Invalid user ID' });
+        }
+      } else if (token) {
+        // トークン経由のアクセス
+        console.log('Token access - Token:', token ? 'Present' : 'Missing');
+        const tokenData = verifyToken(token);
+        if (!tokenData) {
+          console.log('Token verification failed');
+          return res.status(401).json({ error: 'Invalid or expired token' });
+        }
+        userId = tokenData.userId;
+        console.log('Token access - User ID:', userId?.substring(0, 8) + '...');
+      } else {
+        console.log('Neither userId nor token provided');
+        return res.status(400).json({ error: 'User ID or token required' });
       }
       
-      const { userId } = tokenData;
-      console.log('User ID from token:', userId);
+      console.log('Authenticated user ID:', userId);
       
       // 設定バリデーション
       if (!settings) {
@@ -151,7 +196,7 @@ const saveInitialSettings = functions
       res.status(200).json({ 
         success: true,
         message: 'Settings saved successfully',
-        userId: userId.substring(0, 8) + '...' // 部分的なIDのみ返す
+        userId: userId.substring(0, 8) + '...'
       });
       
     } catch (error) {
@@ -166,7 +211,7 @@ const saveInitialSettings = functions
   });
 
 /**
- * ダッシュボードデータ取得API (LIFF + トークン両対応版)
+ * ダッシュボードデータ取得API (LIFF + トークン両対応・デバッグ強化版)
  */
 const getDashboardData = functions
   .region('asia-northeast1')
@@ -174,12 +219,14 @@ const getDashboardData = functions
     console.log('=== getDashboardData called ===');
     console.log('Method:', req.method);
     console.log('Query:', JSON.stringify(req.query, null, 2));
+    console.log('Headers:', JSON.stringify(req.headers, null, 2));
     
     try {
-      // CORS設定
+      // CORS設定 - より包括的に
       res.set('Access-Control-Allow-Origin', '*');
-      res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-      res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+      res.set('Access-Control-Max-Age', '86400');
       
       if (req.method === 'OPTIONS') {
         console.log('Handling CORS preflight');
@@ -188,30 +235,70 @@ const getDashboardData = functions
       
       let userId;
       
-      // 🔧 userIdとtokenの両方に対応
-      if (req.query.userId) {
-        // LIFF経由のアクセス
-        userId = req.query.userId;
-        console.log('LIFF access - User ID:', userId);
-      } else if (req.query.token) {
-        // トークン経由のアクセス
-        const tokenData = verifyToken(req.query.token);
-        if (!tokenData) {
-          console.log('Token verification failed');
-          return res.status(401).json({ error: 'Invalid or expired token' });
+      // 🔧 LIFF + トークン + GET/POST両対応
+      if (req.method === 'GET') {
+        // GET リクエスト (クエリパラメータから取得)
+        if (req.query.userId) {
+          // LIFF経由のアクセス
+          userId = req.query.userId;
+          console.log('GET LIFF access - User ID:', userId?.substring(0, 8) + '...');
+        } else if (req.query.token) {
+          // トークン経由のアクセス
+          const tokenData = verifyToken(req.query.token);
+          if (!tokenData) {
+            console.log('GET Token verification failed');
+            return res.status(401).json({ error: 'Invalid or expired token' });
+          }
+          userId = tokenData.userId;
+          console.log('GET Token access - User ID:', userId?.substring(0, 8) + '...');
         }
-        userId = tokenData.userId;
-        console.log('Token access - User ID:', userId);
-      } else {
-        console.log('Neither userId nor token provided');
-        return res.status(400).json({ error: 'User ID or token required' });
+      } else if (req.method === 'POST') {
+        // POST リクエスト (リクエストボディから取得)
+        const { userId: requestUserId, token } = req.body || {};
+        if (requestUserId) {
+          userId = requestUserId;
+          console.log('POST LIFF access - User ID:', userId?.substring(0, 8) + '...');
+        } else if (token) {
+          const tokenData = verifyToken(token);
+          if (!tokenData) {
+            console.log('POST Token verification failed');
+            return res.status(401).json({ error: 'Invalid or expired token' });
+          }
+          userId = tokenData.userId;
+          console.log('POST Token access - User ID:', userId?.substring(0, 8) + '...');
+        }
       }
       
-      console.log('Getting dashboard data for user:', userId);
+      if (!userId) {
+        console.log('No authentication method provided');
+        return res.status(400).json({ 
+          error: 'Authentication required',
+          message: 'User ID or token required',
+          receivedQuery: req.query,
+          receivedBody: req.body
+        });
+      }
+      
+      // ユーザーID検証
+      const isValid = await validateAndEnsureUser(userId);
+      if (!isValid) {
+        console.log('Invalid user ID');
+        return res.status(400).json({ error: 'Invalid user ID' });
+      }
+      
+      console.log('Getting dashboard data for user:', userId?.substring(0, 8) + '...');
       
       // ユーザー設定取得
       const settings = await getUserSettings(userId);
       console.log('User settings:', JSON.stringify(settings, null, 2));
+      
+      if (!settings) {
+        console.log('User settings not found');
+        return res.status(404).json({ 
+          error: 'User not found',
+          message: 'Please complete initial setup first'
+        });
+      }
       
       // 最新の記録取得
       const records = await getUserRecords(userId, 1);
@@ -221,7 +308,8 @@ const getDashboardData = functions
         console.log('No records found for user');
         return res.status(200).json({
           hasRecords: false,
-          settings: settings
+          settings: settings,
+          message: 'No menstrual records found'
         });
       }
       
@@ -239,14 +327,27 @@ const getDashboardData = functions
         settings: settings,
         lastRecord: {
           startDate: lastRecord.startDate.toDate().toISOString(),
-          endDate: lastRecord.endDate.toDate().toISOString()
+          endDate: lastRecord.endDate ? lastRecord.endDate.toDate().toISOString() : null
         },
         currentPhase: cyclePhase,
         nextPeriod: nextPeriodInfo,
-        ovulation: ovulationInfo
+        ovulation: ovulationInfo,
+        debug: {
+          userId: userId.substring(0, 8) + '...',
+          recordsCount: records.length,
+          settingsValid: !!settings,
+          timestamp: new Date().toISOString(),
+          liffMapping: {
+            dashboard: '2007500037-w97Oo2kv',
+            setup: '2007500037-Vw4nPLEq',
+            calendar: '2007500037-Yb3edQ5o',
+            date_entry: '2007500037-vdpkmNwL'
+          }
+        }
       };
       
       console.log('Dashboard data response prepared successfully');
+      console.log('Response data keys:', Object.keys(responseData));
       res.status(200).json(responseData);
       
     } catch (error) {
@@ -255,7 +356,12 @@ const getDashboardData = functions
       res.status(500).json({ 
         error: 'Internal server error',
         message: error.message,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        debug: {
+          method: req.method,
+          query: req.query,
+          body: req.body
+        }
       });
     }
   });
@@ -271,8 +377,8 @@ const getCalendarData = functions
     try {
       // CORS設定
       res.set('Access-Control-Allow-Origin', '*');
-      res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-      res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
       
       if (req.method === 'OPTIONS') {
         return res.status(200).send('');
@@ -280,30 +386,53 @@ const getCalendarData = functions
       
       let userId;
       
-      // 🔧 userIdとtokenの両方に対応
-      if (req.query.userId) {
-        // LIFF経由のアクセス
-        userId = req.query.userId;
-        console.log('LIFF access - User ID:', userId);
-      } else if (req.query.token) {
-        // トークン経由のアクセス
-        const tokenData = verifyToken(req.query.token);
-        if (!tokenData) {
-          console.log('Token verification failed');
-          return res.status(401).json({ error: 'Invalid or expired token' });
+      // 🔧 GET/POST両対応
+      if (req.method === 'GET') {
+        if (req.query.userId) {
+          userId = req.query.userId;
+          console.log('GET LIFF access - User ID:', userId?.substring(0, 8) + '...');
+        } else if (req.query.token) {
+          const tokenData = verifyToken(req.query.token);
+          if (!tokenData) {
+            return res.status(401).json({ error: 'Invalid or expired token' });
+          }
+          userId = tokenData.userId;
+          console.log('GET Token access - User ID:', userId?.substring(0, 8) + '...');
         }
-        userId = tokenData.userId;
-        console.log('Token access - User ID:', userId);
-      } else {
-        console.log('Neither userId nor token provided');
+      } else if (req.method === 'POST') {
+        const { userId: requestUserId, token } = req.body || {};
+        if (requestUserId) {
+          userId = requestUserId;
+          console.log('POST LIFF access - User ID:', userId?.substring(0, 8) + '...');
+        } else if (token) {
+          const tokenData = verifyToken(token);
+          if (!tokenData) {
+            return res.status(401).json({ error: 'Invalid or expired token' });
+          }
+          userId = tokenData.userId;
+          console.log('POST Token access - User ID:', userId?.substring(0, 8) + '...');
+        }
+      }
+      
+      if (!userId) {
         return res.status(400).json({ error: 'User ID or token required' });
       }
       
-      console.log('Getting calendar data for user:', userId);
+      // ユーザーID検証
+      const isValid = await validateAndEnsureUser(userId);
+      if (!isValid) {
+        return res.status(400).json({ error: 'Invalid user ID' });
+      }
+      
+      console.log('Getting calendar data for user:', userId?.substring(0, 8) + '...');
       
       // ユーザー設定とすべての記録を取得
       const settings = await getUserSettings(userId);
       const records = await getUserRecords(userId, 12); // 最新12件
+      
+      if (!settings) {
+        return res.status(404).json({ error: 'User not found' });
+      }
       
       if (records.length === 0) {
         return res.status(200).json({
@@ -317,7 +446,7 @@ const getCalendarData = functions
       // 記録データを整形
       const formattedRecords = records.map(record => ({
         startDate: record.startDate.toDate().toISOString(),
-        endDate: record.endDate.toDate().toISOString(),
+        endDate: record.endDate ? record.endDate.toDate().toISOString() : null,
         id: record.id
       }));
       
@@ -372,7 +501,7 @@ const updateWebSettings = functions
       // CORS設定
       res.set('Access-Control-Allow-Origin', '*');
       res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-      res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
       
       if (req.method === 'OPTIONS') {
         return res.status(200).send('');
@@ -385,24 +514,27 @@ const updateWebSettings = functions
       let userId;
       const { token, userId: requestUserId, settings } = req.body;
       
-      // 🔧 userIdとtokenの両方に対応
+      // 🔧 LIFF + トークン両対応
       if (requestUserId) {
-        // LIFF経由のアクセス
         userId = requestUserId;
-        console.log('LIFF access - User ID:', userId);
+        console.log('LIFF access - User ID:', userId?.substring(0, 8) + '...');
+        
+        const isValid = await validateAndEnsureUser(userId);
+        if (!isValid) {
+          return res.status(400).json({ error: 'Invalid user ID' });
+        }
       } else if (token) {
-        // トークン経由のアクセス
         const tokenData = verifyToken(token);
         if (!tokenData) {
           return res.status(401).json({ error: 'Invalid or expired token' });
         }
         userId = tokenData.userId;
-        console.log('Token access - User ID:', userId);
+        console.log('Token access - User ID:', userId?.substring(0, 8) + '...');
       } else {
         return res.status(400).json({ error: 'User ID or token required' });
       }
       
-      console.log('Updating settings for user:', userId);
+      console.log('Updating settings for user:', userId?.substring(0, 8) + '...');
       
       // 設定更新
       for (const [key, value] of Object.entries(settings)) {
@@ -419,11 +551,174 @@ const updateWebSettings = functions
     }
   });
 
+/**
+ * LIFF トークン検証・ユーザー情報取得 (複数LIFF ID対応)
+ */
+const verifyLiffToken = functions
+  .region('asia-northeast1')
+  .https.onRequest(async (req, res) => {
+    console.log('=== verifyLiffToken called ===');
+    
+    try {
+      res.set('Access-Control-Allow-Origin', '*');
+      res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+      res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      
+      if (req.method === 'OPTIONS') {
+        return res.status(200).send('');
+      }
+      
+      const { idToken, userId, liffId, page } = req.body;
+      console.log('LIFF verification request:', { 
+        userId: userId?.substring(0, 8) + '...', 
+        hasIdToken: !!idToken,
+        liffId: liffId,
+        page: page
+      });
+      
+      if (!userId) {
+        return res.status(400).json({ error: 'User ID is required' });
+      }
+      
+      // LIFF ID マッピング
+      const LIFF_MAPPING = {
+        'dashboard': '2007500037-w97Oo2kv',
+        'setup': '2007500037-Vw4nPLEq', 
+        'calendar': '2007500037-Yb3edQ5o',
+        'date_entry': '2007500037-vdpkmNwL'
+      };
+      
+      // ユーザー存在確認・作成
+      const isValid = await validateAndEnsureUser(userId);
+      if (!isValid) {
+        return res.status(400).json({ error: 'Invalid user ID' });
+      }
+      
+      // ユーザー設定取得
+      const settings = await getUserSettings(userId);
+      const needsSetup = !settings || !settings.initialSetupCompleted;
+      
+      console.log(`LIFF user verified: ${userId.substring(0, 8)}..., needsSetup: ${needsSetup}`);
+      
+      res.status(200).json({
+        success: true,
+        userId: userId,
+        needsSetup: needsSetup,
+        settings: settings || {},
+        liffId: liffId,
+        page: page,
+        liffMapping: LIFF_MAPPING
+      });
+      
+    } catch (error) {
+      console.error('Error in verifyLiffToken:', error);
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: error.message 
+      });
+    }
+  });
+
+/**
+ * 生理記録保存API (開始日入力画面用)
+ */
+const savePeriodRecord = functions
+  .region('asia-northeast1')
+  .https.onRequest(async (req, res) => {
+    console.log('=== savePeriodRecord called ===');
+    
+    try {
+      // CORS設定
+      res.set('Access-Control-Allow-Origin', '*');
+      res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+      res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+      
+      if (req.method === 'OPTIONS') {
+        return res.status(200).send('');
+      }
+      
+      if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+      }
+      
+      const { userId, startDate, endDate, duration } = req.body;
+      
+      if (!userId || !startDate) {
+        return res.status(400).json({ error: 'User ID and start date are required' });
+      }
+      
+      // ユーザーID検証
+      const isValid = await validateAndEnsureUser(userId);
+      if (!isValid) {
+        return res.status(400).json({ error: 'Invalid user ID' });
+      }
+      
+      console.log(`Saving period record for user: ${userId.substring(0, 8)}...`);
+      console.log(`Period: ${startDate} to ${endDate} (${duration} days)`);
+      
+      // 日付バリデーション
+      const start = new Date(startDate);
+      const end = endDate ? new Date(endDate) : null;
+      const today = new Date();
+      
+      if (isNaN(start.getTime())) {
+        return res.status(400).json({ error: 'Invalid start date format' });
+      }
+      
+      if (start > today) {
+        return res.status(400).json({ error: 'Start date cannot be in the future' });
+      }
+      
+      // 3ヶ月以上前のチェック
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      if (start < threeMonthsAgo) {
+        return res.status(400).json({ error: 'Start date cannot be more than 3 months ago' });
+      }
+      
+      // Firestoreに記録保存
+      const recordsRef = admin.firestore().collection('records');
+      const recordData = {
+        userId: userId,
+        startDate: admin.firestore.Timestamp.fromDate(start),
+        endDate: end ? admin.firestore.Timestamp.fromDate(end) : null,
+        duration: duration || null,
+        recordedAt: admin.firestore.FieldValue.serverTimestamp(),
+        type: 'menstrual'
+      };
+      
+      const recordDoc = await recordsRef.add(recordData);
+      console.log(`Period record saved with ID: ${recordDoc.id}`);
+      
+      // ユーザーの最終活動日更新
+      const userRef = admin.firestore().collection('users').doc(userId);
+      await userRef.update({
+        lastActiveAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastRecordAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      res.status(200).json({
+        success: true,
+        recordId: recordDoc.id,
+        message: 'Period record saved successfully'
+      });
+      
+    } catch (error) {
+      console.error('Error in savePeriodRecord:', error);
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: error.message 
+      });
+    }
+  });
+
 module.exports = {
   generateSecureToken,
   verifyToken,
   saveInitialSettings,
   getDashboardData,
   getCalendarData,
-  updateWebSettings
+  updateWebSettings,
+  verifyLiffToken,
+  savePeriodRecord
 };

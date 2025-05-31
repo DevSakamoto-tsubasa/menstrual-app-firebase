@@ -1,11 +1,11 @@
-// src/handlers/partnerHandler.js - パートナー機能ハンドラー
+// src/handlers/partnerHandler.js - LIFF対応完全版
 
 const admin = require('firebase-admin');
 const { getUserSettings, db } = require('../utils/firestoreUtils');
 const { COLLECTIONS, COMMANDS } = require('../config/constants');
 
 /**
- * 招待コード生成
+ * 招待コード生成（従来方式）
  * @param {string} userId - LINE ユーザーID
  * @returns {string} - 返信メッセージ
  */
@@ -75,7 +75,62 @@ async function generateInviteCode(userId) {
 }
 
 /**
- * 招待コード使用
+ * LIFF招待リンク生成（新機能）
+ * @param {string} userId - LINE ユーザーID
+ * @returns {Object} - 招待データ
+ */
+async function generateInviteLiffLink(userId) {
+  try {
+    console.log(`Generating LIFF invite link for user: ${userId}`);
+    
+    // 既存のパートナー確認
+    const existingPartnerId = await getPartnerId(userId);
+    if (existingPartnerId) {
+      throw new Error('Partner already exists');
+    }
+    
+    // 既存の有効な招待コードを無効化
+    await invalidateUserInviteCodes(userId);
+    
+    // 新しい招待コード生成
+    const inviteCode = await createUniqueInviteCode();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24時間後
+    
+    // LIFF URL生成
+    const INVITE_LIFF_ID = '2007500037-InviteXxx'; // 招待受諾用LIFF ID
+    const inviteUrl = `https://liff.line.me/${INVITE_LIFF_ID}?code=${inviteCode}`;
+    
+    // 招待データをFirestoreに保存
+    const inviteData = {
+      code: inviteCode,
+      generatedBy: userId,
+      status: 'active',
+      type: 'liff',
+      liffUrl: inviteUrl,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+      maxUses: 1,
+      currentUses: 0
+    };
+    
+    await db.collection(COLLECTIONS.INVITE_CODES).doc(inviteCode).set(inviteData);
+    
+    console.log(`LIFF invite link generated: ${inviteUrl}`);
+    
+    return {
+      code: inviteCode,
+      url: inviteUrl,
+      expiresAt: expiresAt
+    };
+
+  } catch (error) {
+    console.error('Error in generateInviteLiffLink:', error);
+    throw error;
+  }
+}
+
+/**
+ * 招待コード使用（従来方式）
  * @param {string} userId - LINE ユーザーID
  * @param {string} message - メッセージ（招待コード含む）
  * @returns {string} - 返信メッセージ
@@ -98,27 +153,69 @@ async function useInviteCode(userId, message) {
     const inviteCode = codeMatch[1].trim().toUpperCase();
     console.log(`Extracted invite code: ${inviteCode}`);
 
-    // 自分のコードでないかチェック
-    if (await isOwnInviteCode(userId, inviteCode)) {
-      return `❌ 自分が生成した招待コードは使用できません。
+    return await processInviteAcceptance(userId, inviteCode);
 
-相手からの招待コードを入力してください。`;
+  } catch (error) {
+    console.error('Error in useInviteCode:', error);
+    return '招待コードの処理中にエラーが発生しました。再度お試しください。';
+  }
+}
+
+/**
+ * LIFF招待受諾処理（新機能）
+ * @param {string} inviteCode - 招待コード
+ * @param {string} newUserId - 新しいユーザーID
+ * @returns {Object} - 処理結果
+ */
+async function acceptLiffInvite(inviteCode, newUserId) {
+  try {
+    console.log(`Processing LIFF invite acceptance: ${inviteCode} by ${newUserId}`);
+    
+    const result = await processInviteAcceptance(newUserId, inviteCode);
+    
+    if (result.includes('💕 パートナー登録が完了しました！')) {
+      return {
+        success: true,
+        message: result
+      };
+    } else {
+      throw new Error(result);
     }
 
-    // 既存のパートナー確認
-    const existingPartnerId = await getPartnerId(userId);
-    if (existingPartnerId) {
-      return `⚠️ すでにパートナーが登録されています。
+  } catch (error) {
+    console.error('Error in acceptLiffInvite:', error);
+    throw error;
+  }
+}
+
+/**
+ * 招待受諾処理（共通ロジック）
+ * @param {string} userId - ユーザーID
+ * @param {string} inviteCode - 招待コード
+ * @returns {string} - 処理結果メッセージ
+ */
+async function processInviteAcceptance(userId, inviteCode) {
+  // 自分のコードでないかチェック
+  if (await isOwnInviteCode(userId, inviteCode)) {
+    return `❌ 自分が生成した招待コードは使用できません。
+
+相手からの招待コードを入力してください。`;
+  }
+
+  // 既存のパートナー確認
+  const existingPartnerId = await getPartnerId(userId);
+  if (existingPartnerId) {
+    return `⚠️ すでにパートナーが登録されています。
 
 👫 現在のパートナー: ${existingPartnerId}
 
 新しいパートナーを登録したい場合は、まず「パートナー解除」を実行してください。`;
-    }
+  }
 
-    // 招待コードの確認
-    const codeData = await getInviteCodeData(inviteCode);
-    if (!codeData) {
-      return `❌ 無効な招待コードです。
+  // 招待コードの確認
+  const codeData = await getInviteCodeData(inviteCode);
+  if (!codeData) {
+    return `❌ 無効な招待コードです。
 
 🔧 確認事項:
 • コードが正確に入力されているか
@@ -126,46 +223,47 @@ async function useInviteCode(userId, message) {
 • 相手から正しいコードを受け取ったか
 
 再度確認して入力してください。`;
-    }
+  }
 
-    if (codeData.status !== 'active') {
-      return `❌ この招待コードは既に使用済みです。
-
-新しい招待コードを生成してもらってください。`;
-    }
-
-    // 有効期限チェック
-    const now = new Date();
-    const expiresAt = codeData.expiresAt.toDate();
-    if (now > expiresAt) {
-      // 期限切れのコードを無効化
-      await markInviteCodeAsExpired(inviteCode);
-      return `❌ この招待コードは期限切れです（24時間経過）。
+  if (codeData.status !== 'active') {
+    return `❌ この招待コードは既に使用済みです。
 
 新しい招待コードを生成してもらってください。`;
-    }
+  }
 
-    // パートナー関係を作成
-    const inviterUserId = codeData.generatedBy;
-    const partnershipId = generatePartnershipId(inviterUserId, userId);
-    
-    const partnershipData = {
-      user1: inviterUserId,
-      user2: userId,
-      status: 'active',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      activatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      inviteCode: inviteCode,
-      invitedBy: inviterUserId
-    };
+  // 有効期限チェック
+  const now = new Date();
+  const expiresAt = codeData.expiresAt.toDate();
+  if (now > expiresAt) {
+    // 期限切れのコードを無効化
+    await markInviteCodeAsExpired(inviteCode);
+    return `❌ この招待コードは期限切れです（24時間経過）。
 
-    await db.collection(COLLECTIONS.PARTNERS).doc(partnershipId).set(partnershipData);
+新しい招待コードを生成してもらってください。`;
+  }
 
-    // 招待コードを使用済みにマーク
-    await markInviteCodeAsUsed(inviteCode, userId);
+  // パートナー関係を作成
+  const inviterUserId = codeData.generatedBy;
+  const partnershipId = generatePartnershipId(inviterUserId, userId);
+  
+  const partnershipData = {
+    user1: inviterUserId,
+    user2: userId,
+    status: 'active',
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    activatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    inviteCode: inviteCode,
+    invitedBy: inviterUserId,
+    inviteType: codeData.type || 'traditional'
+  };
 
-    // 成功メッセージ
-    const successMessage = `💕 パートナー登録が完了しました！
+  await db.collection(COLLECTIONS.PARTNERS).doc(partnershipId).set(partnershipData);
+
+  // 招待コードを使用済みにマーク
+  await markInviteCodeAsUsed(inviteCode, userId);
+
+  // 成功メッセージ
+  const successMessage = `💕 パートナー登録が完了しました！
 
 🎉 パートナーシップが確立されました
 👫 パートナー: ${inviterUserId}
@@ -177,15 +275,10 @@ async function useInviteCode(userId, message) {
 
 これからデータを共有して、お互いをサポートしましょう ❤️`;
 
-    // 招待者に通知
-    await notifyPartnerRegistration(inviterUserId, userId, inviteCode);
+  // 招待者に通知
+  await notifyPartnerRegistration(inviterUserId, userId, inviteCode);
 
-    return successMessage;
-
-  } catch (error) {
-    console.error('Error in useInviteCode:', error);
-    return '招待コードの処理中にエラーが発生しました。再度お試しください。';
-  }
+  return successMessage;
 }
 
 /**
@@ -284,6 +377,74 @@ async function removePartner(userId) {
   } catch (error) {
     console.error('Error in removePartner:', error);
     return 'パートナー解除中にエラーが発生しました。再度お試しください。';
+  }
+}
+
+/**
+ * サポート設定保存
+ * @param {string} userId - ユーザーID
+ * @param {Object} supportData - サポート設定データ
+ * @returns {boolean} - 成功/失敗
+ */
+async function saveSupportSettings(userId, supportData) {
+  try {
+    console.log(`Saving support settings for user: ${userId}`);
+    
+    const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
+    await userRef.update({
+      supportSettings: {
+        actions: supportData.actions || '',
+        wantedFoods: supportData.wantedFoods || [],
+        avoidFoods: supportData.avoidFoods || [],
+        message: supportData.message || '',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      },
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    
+    console.log(`Support settings saved for user: ${userId}`);
+    return true;
+
+  } catch (error) {
+    console.error('Error saving support settings:', error);
+    return false;
+  }
+}
+
+/**
+ * サポート設定取得
+ * @param {string} userId - ユーザーID
+ * @returns {Object} - サポート設定
+ */
+async function getSupportSettings(userId) {
+  try {
+    const userDoc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
+    
+    if (!userDoc.exists) {
+      return {
+        actions: '',
+        wantedFoods: [],
+        avoidFoods: [],
+        message: ''
+      };
+    }
+    
+    const userData = userDoc.data();
+    return userData.supportSettings || {
+      actions: '',
+      wantedFoods: [],
+      avoidFoods: [],
+      message: ''
+    };
+
+  } catch (error) {
+    console.error('Error getting support settings:', error);
+    return {
+      actions: '',
+      wantedFoods: [],
+      avoidFoods: [],
+      message: ''
+    };
   }
 }
 
@@ -556,9 +717,13 @@ async function notifyPartnerRemoval(partnerId, removedBy) {
 
 module.exports = {
   generateInviteCode,
+  generateInviteLiffLink,
   useInviteCode,
+  acceptLiffInvite,
   checkPartner,
   removePartner,
+  saveSupportSettings,
+  getSupportSettings,
   getPartnerId,
   getPartnershipData
 };

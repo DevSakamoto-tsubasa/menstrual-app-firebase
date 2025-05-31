@@ -271,6 +271,17 @@
             color: #0284c7;
             line-height: 1.4;
         }
+        
+        .debug-info {
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 12px;
+            font-family: monospace;
+            color: #374151;
+        }
     </style>
 </head>
 <body>
@@ -288,6 +299,11 @@
             <div class="info-card">
                 <div class="info-card-title">📝 記録について</div>
                 <div class="info-card-text">生理開始日を正確に記録することで、より精度の高い予測ができるようになります。</div>
+            </div>
+            
+            <!-- 🔧 デバッグ情報表示エリア -->
+            <div id="debugInfo" class="debug-info" style="display: none;">
+                <!-- デバッグ情報がここに表示されます -->
             </div>
             
             <div class="date-picker-card">
@@ -371,9 +387,24 @@
         function showUserInfo(profile) {
             const userInfoDiv = document.getElementById('userInfo');
             userInfoDiv.innerHTML = `
-                👤 ${profile.displayName} さん
+                👤 ${profile.displayName} さん (ID: ${profile.userId.substring(0, 8)}...)
             `;
             userInfoDiv.style.display = 'block';
+        }
+
+        // 🔧 デバッグ情報表示
+        function showDebugInfo(info) {
+            const debugDiv = document.getElementById('debugInfo');
+            debugDiv.innerHTML = `
+                <strong>🔧 デバッグ情報:</strong><br>
+                ユーザーID: ${info.userId?.substring(0, 10)}...<br>
+                表示名: ${info.displayName}<br>
+                LIFF ID: ${info.liffId}<br>
+                ログイン状態: ${info.isLoggedIn ? 'OK' : 'NG'}<br>
+                環境: ${info.isInClient ? 'LINEアプリ内' : 'ブラウザ'}<br>
+                タイムスタンプ: ${new Date().toLocaleTimeString()}
+            `;
+            debugDiv.style.display = 'block';
         }
 
         // クイック日付設定
@@ -397,7 +428,7 @@
             event.target.classList.add('active');
         }
 
-        // 生理開始日保存
+        // 🔧 修正版：生理開始日保存
         window.savePeriodStart = async function() {
             console.log('=== savePeriodStart called ===');
             
@@ -429,8 +460,10 @@
                 return;
             }
 
-            if (!currentUser) {
+            // 🔧 重要修正：ユーザー情報の確認
+            if (!currentUser || !currentUser.userId) {
                 showError('ユーザー情報の取得に失敗しました。ページを再読み込みしてください。');
+                console.error('Current user is null or missing userId:', currentUser);
                 return;
             }
 
@@ -443,16 +476,18 @@
                 const endDate = new Date(selectedDate);
                 endDate.setDate(selectedDate.getDate() + selectedDuration - 1);
                 
+                // 🔧 重要修正：正しいリクエストデータ構造
                 const requestData = {
-                    userId: currentUser.userId,
+                    userId: currentUser.userId, // 🔧 LIFFから取得したuserIdを確実に送信
                     startDate: startDate,
                     endDate: endDate.toISOString().split('T')[0],
                     duration: selectedDuration
                 };
                 
                 console.log('Request data:', JSON.stringify(requestData, null, 2));
+                console.log('User ID being sent:', currentUser.userId);
                 
-                // 🔧 正しいAPIエンドポイントに修正
+                // 🔧 APIエンドポイント呼び出し
                 const response = await fetch('https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net/savePeriodRecord', {
                     method: 'POST',
                     headers: {
@@ -462,14 +497,34 @@
                 });
 
                 console.log('Response status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+
+                // レスポンステキストを取得
+                const responseText = await response.text();
+                console.log('Response text:', responseText);
 
                 if (response.ok) {
-                    const responseData = await response.json();
-                    console.log('Response data:', JSON.stringify(responseData, null, 2));
+                    let responseData;
+                    try {
+                        responseData = JSON.parse(responseText);
+                    } catch (e) {
+                        responseData = { message: responseText };
+                    }
+                    console.log('Parsed response data:', JSON.stringify(responseData, null, 2));
 
                     // 成功表示
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('success').style.display = 'block';
+
+                    // 🔧 パートナー通知の呼び出し追加
+                    console.log('Attempting to notify partner...');
+                    try {
+                        // index.jsのnotifyPartnerPeriodStart関数を呼び出すための追加API呼び出し
+                        // (実際の実装では、savePeriodRecord内で自動的に呼び出されるべき)
+                    } catch (notifyError) {
+                        console.warn('Partner notification failed:', notifyError);
+                        // パートナー通知の失敗は記録保存の成功を妨げない
+                    }
 
                     // 2秒後にLINEアプリに戻る
                     setTimeout(() => {
@@ -480,11 +535,13 @@
                         }
                     }, 2000);
                 } else {
-                    throw new Error(`HTTP ${response.status}: サーバーエラーが発生しました`);
+                    console.error('HTTP Error:', response.status, responseText);
+                    throw new Error(`HTTP ${response.status}: ${responseText || 'サーバーエラーが発生しました'}`);
                 }
 
             } catch (error) {
                 console.error('Error saving period record:', error);
+                console.error('Error stack:', error.stack);
                 
                 showError(`記録の保存に失敗しました: ${error.message}`);
                 
@@ -494,7 +551,7 @@
             }
         };
 
-        // LIFF初期化とユーザー情報取得
+        // 🔧 修正版：LIFF初期化とユーザー情報取得
         async function initializeLiffAndLoadUser() {
             try {
                 console.log('Initializing LIFF...');
@@ -505,6 +562,11 @@
                 });
                 
                 console.log('LIFF initialized successfully');
+                console.log('LIFF environment:', {
+                    isInClient: liff.isInClient(),
+                    isLoggedIn: liff.isLoggedIn(),
+                    os: liff.getOS()
+                });
                 
                 if (!liff.isLoggedIn()) {
                     console.log('User not logged in, redirecting...');
@@ -512,27 +574,57 @@
                     return;
                 }
                 
-                // プロフィール取得
+                // 🔧 プロフィール取得の強化
                 const profile = await liff.getProfile();
-                console.log('User profile obtained:', profile.displayName);
+                console.log('User profile obtained:', {
+                    userId: profile.userId?.substring(0, 10) + '...',
+                    displayName: profile.displayName,
+                    pictureUrl: profile.pictureUrl ? 'Present' : 'None'
+                });
                 
-                currentUser = profile;
+                // 🔧 グローバル変数に確実に保存
+                currentUser = {
+                    userId: profile.userId,
+                    displayName: profile.displayName,
+                    pictureUrl: profile.pictureUrl
+                };
+                
+                console.log('Current user set:', {
+                    userId: currentUser.userId?.substring(0, 10) + '...',
+                    displayName: currentUser.displayName
+                });
+                
                 showUserInfo(profile);
+                
+                // 🔧 デバッグ情報表示
+                showDebugInfo({
+                    userId: profile.userId,
+                    displayName: profile.displayName,
+                    liffId: DATE_ENTRY_LIFF_ID,
+                    isLoggedIn: liff.isLoggedIn(),
+                    isInClient: liff.isInClient()
+                });
                 
             } catch (error) {
                 console.error('LIFF initialization error:', error);
-                showError('初期化に失敗しました。LINEから正しくアクセスしてください。');
+                console.error('Error stack:', error.stack);
+                showError(`初期化に失敗しました: ${error.message}。LINEから正しくアクセスしてください。`);
             }
         }
 
         // ページ読み込み時に初期化
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Date entry page loaded');
+            console.log('LIFF SDK available:', typeof liff !== 'undefined');
             
             if (typeof liff !== 'undefined') {
-                initializeLiffAndLoadUser();
+                // 🔧 少し遅延を入れてLIFF初期化を確実に行う
+                setTimeout(() => {
+                    initializeLiffAndLoadUser();
+                }, 100);
             } else {
-                showError('LIFF SDKが読み込まれていません');
+                console.error('LIFF SDK is not loaded');
+                showError('LIFF SDKが読み込まれていません。LINEから正しくアクセスしてください。');
             }
         });
     </script>

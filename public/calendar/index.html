@@ -523,83 +523,138 @@
             return monthDiv;
         }
 
-        // カレンダー日付をマーキング（生理・排卵のみ）
-        function markCalendarDay(dayElement, date) {
-            if (!userData || !userData.settings) return;
+// 🔧 修正版：カレンダー日付をマーキング（予測マーキング修正）
+function markCalendarDay(dayElement, date) {
+    if (!userData || !userData.settings) return;
+    
+    console.log('🔍 markCalendarDay called for:', date.toISOString().split('T')[0]);
+    
+    // 日付のみで比較するための関数
+    function isSameDate(date1, date2) {
+        const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+        const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+        return d1.getTime() === d2.getTime();
+    }
+    
+    function isDateInRange(checkDate, startDate, endDate) {
+        const check = new Date(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate());
+        const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+        return check >= start && check <= end;
+    }
+    
+    // 実際の生理記録をチェック
+    if (userData.records) {
+        for (const record of userData.records) {
+            const startDate = new Date(record.startDate);
+            const endDate = record.endDate ? new Date(record.endDate) : null;
             
-            // 実際の生理記録をチェック
-            if (userData.records) {
-                for (const record of userData.records) {
-                    const startDate = new Date(record.startDate);
-                    const endDate = record.endDate ? new Date(record.endDate) : null;
-                    
-                    if (endDate && date >= startDate && date <= endDate) {
-                        dayElement.classList.add('period');
-                        return;
-                    } else if (!endDate && date.toDateString() === startDate.toDateString()) {
-                        dayElement.classList.add('period');
-                        return;
-                    }
-                }
-            }
+            console.log('📄 Checking actual record:', {
+                startDate: startDate.toISOString().split('T')[0],
+                endDate: endDate ? endDate.toISOString().split('T')[0] : null,
+                checkingDate: date.toISOString().split('T')[0]
+            });
             
-            // 🔧 複数月の予測計算（生理・排卵のみ）
-            if (userData.records && userData.records.length > 0) {
-                const lastRecord = userData.records[0];
-                const lastPeriodStart = new Date(lastRecord.startDate);
-                const cycle = userData.settings.cycle || 28;
-                const period = userData.settings.period || 5;
-                
-                // 次回以降の生理・排卵予測（6ヶ月先まで）
-                for (let cycleCount = 1; cycleCount <= 6; cycleCount++) {
-                    const predictedStart = new Date(lastPeriodStart);
-                    predictedStart.setDate(lastPeriodStart.getDate() + (cycle * cycleCount));
-                    
-                    const predictedEnd = new Date(predictedStart);
-                    predictedEnd.setDate(predictedStart.getDate() + period - 1);
-                    
-                    // 予測生理期間
-                    if (date >= predictedStart && date <= predictedEnd) {
-                        dayElement.classList.add('predicted-period');
-                        return;
-                    }
-                    
-                    // 予測排卵日（生理開始14日前）
-                    const predictedOvulation = new Date(predictedStart);
-                    predictedOvulation.setDate(predictedStart.getDate() - 14);
-                    
-                    if (date.toDateString() === predictedOvulation.toDateString()) {
-                        dayElement.classList.add('predicted-ovulation');
-                        return;
-                    }
+            if (endDate) {
+                // 終了日がある場合：開始日から終了日まで（両端含む）
+                if (isDateInRange(date, startDate, endDate)) {
+                    console.log('✅ Marked as actual period');
+                    dayElement.classList.add('period');
+                    return;
                 }
-            }
-            
-            // 従来の予測データ（APIから取得）
-            if (userData.predictions) {
-                // 次回生理予測
-                if (userData.predictions.nextPeriod) {
-                    const nextStart = new Date(userData.predictions.nextPeriod.startDate);
-                    const nextEnd = new Date(userData.predictions.nextPeriod.endDate);
-                    
-                    if (date >= nextStart && date <= nextEnd) {
-                        dayElement.classList.add('predicted-period');
-                        return;
-                    }
-                }
-                
-                // 排卵日予測
-                if (userData.predictions.ovulation) {
-                    const ovulationDate = new Date(userData.predictions.ovulation.date);
-                    
-                    if (date.toDateString() === ovulationDate.toDateString()) {
-                        dayElement.classList.add('ovulation');
-                        return;
-                    }
+            } else {
+                // 終了日がない場合：開始日のみ
+                if (isSameDate(date, startDate)) {
+                    console.log('✅ Marked as actual period (start only)');
+                    dayElement.classList.add('period');
+                    return;
                 }
             }
         }
-
+    }
+    
+    // 🔧 複数月の予測計算（マーキング修正）
+    if (userData.records && userData.records.length > 0) {
+        const lastRecord = userData.records[0];
+        const lastPeriodStart = new Date(lastRecord.startDate);
+        const cycle = userData.settings.cycle || 28;
+        const period = userData.settings.period || 5;
+        
+        console.log('🔮 Prediction settings:', {
+            lastPeriodStart: lastPeriodStart.toISOString().split('T')[0],
+            cycle: cycle,
+            period: period
+        });
+        
+        // 次回以降の生理・排卵予測（6ヶ月先まで）
+        for (let cycleCount = 1; cycleCount <= 6; cycleCount++) {
+            const predictedStart = new Date(lastPeriodStart);
+            predictedStart.setDate(lastPeriodStart.getDate() + (cycle * cycleCount));
+            
+            // 🔧 重要修正：予測終了日を正確に計算（period-1日後）
+            const predictedEnd = new Date(predictedStart);
+            predictedEnd.setDate(predictedStart.getDate() + period - 1);
+            
+            console.log(`🔮 Prediction cycle ${cycleCount}:`, {
+                predictedStart: predictedStart.toISOString().split('T')[0],
+                predictedEnd: predictedEnd.toISOString().split('T')[0],
+                period: period,
+                checkingDate: date.toISOString().split('T')[0]
+            });
+            
+            // 🔧 予測生理期間内かチェック（正確な日付範囲）
+            if (isDateInRange(date, predictedStart, predictedEnd)) {
+                console.log('✅ Marked as predicted period');
+                dayElement.classList.add('predicted-period');
+                return;
+            }
+            
+            // 予測排卵日（生理開始14日前）
+            const predictedOvulation = new Date(predictedStart);
+            predictedOvulation.setDate(predictedStart.getDate() - 14);
+            
+            if (isSameDate(date, predictedOvulation)) {
+                console.log('✅ Marked as predicted ovulation');
+                dayElement.classList.add('predicted-ovulation');
+                return;
+            }
+        }
+    }
+    
+    // 従来の予測データ（APIから取得）- 修正版
+    if (userData.predictions) {
+        // 次回生理予測
+        if (userData.predictions.nextPeriod) {
+            const nextStart = new Date(userData.predictions.nextPeriod.startDate);
+            const nextEnd = new Date(userData.predictions.nextPeriod.endDate);
+            
+            console.log('🔮 API prediction:', {
+                nextStart: nextStart.toISOString().split('T')[0],
+                nextEnd: nextEnd.toISOString().split('T')[0],
+                checkingDate: date.toISOString().split('T')[0]
+            });
+            
+            if (isDateInRange(date, nextStart, nextEnd)) {
+                console.log('✅ Marked as API predicted period');
+                dayElement.classList.add('predicted-period');
+                return;
+            }
+        }
+        
+        // 排卵日予測
+        if (userData.predictions.ovulation) {
+            const ovulationDate = new Date(userData.predictions.ovulation.date);
+            
+            if (isSameDate(date, ovulationDate)) {
+                console.log('✅ Marked as API predicted ovulation');
+                dayElement.classList.add('ovulation');
+                return;
+            }
+        }
+    }
+    
+    console.log('❌ No marking applied');
+}
         // スクロール検知で月表示を更新
         function handleScroll() {
             const container = document.getElementById('calendarScrollContainer');
@@ -639,102 +694,238 @@
             modal.style.display = 'block';
         }
 
-        // 日付の詳細情報を取得（生理・排卵のみ）
-        function getDayDetailInfo(date) {
-            if (!userData) return '情報を読み込み中...';
-            
-            let info = [];
-            
-            // 実際の記録をチェック
-            for (const record of userData.records || []) {
-                const startDate = new Date(record.startDate);
-                const endDate = record.endDate ? new Date(record.endDate) : null;
+// 🔧 修正版：日付の詳細情報を取得（予測情報表示修正）
+function getDayDetailInfo(date) {
+    if (!userData) return '情報を読み込み中...';
+    
+    let info = [];
+    
+    console.log('🔍 getDayDetailInfo called for:', date.toISOString().split('T')[0]);
+    
+    // 日付のみで比較するための関数
+    function isSameDate(date1, date2) {
+        const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+        const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+        return d1.getTime() === d2.getTime();
+    }
+    
+    function isDateInRange(checkDate, startDate, endDate) {
+        const check = new Date(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate());
+        const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+        return check >= start && check <= end;
+    }
+    
+    function calculateDayNumber(checkDate, startDate) {
+        const check = new Date(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate());
+        const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        return Math.round((check - start) / (1000 * 60 * 60 * 24)) + 1;
+    }
+    
+    // 実際の記録をチェック
+    for (const record of userData.records || []) {
+        const startDate = new Date(record.startDate);
+        const endDate = record.endDate ? new Date(record.endDate) : null;
+        
+        console.log('📄 Checking actual record:', {
+            startDate: startDate.toISOString().split('T')[0],
+            endDate: endDate ? endDate.toISOString().split('T')[0] : null,
+            checkingDate: date.toISOString().split('T')[0]
+        });
+        
+        if (endDate) {
+            if (isDateInRange(date, startDate, endDate)) {
+                const dayNumber = calculateDayNumber(date, startDate);
+                const totalDays = Math.round((new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()) - 
+                                           new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())) / (1000 * 60 * 60 * 24)) + 1;
                 
-                if (endDate && date >= startDate && date <= endDate) {
-                    const dayNumber = Math.floor((date - startDate) / (1000 * 60 * 60 * 24)) + 1;
-                    info.push(`🌸 生理 ${dayNumber}日目`);
-                    info.push(`期間: ${startDate.toLocaleDateString('ja-JP')} 〜 ${endDate.toLocaleDateString('ja-JP')}`);
-                    break;
-                } else if (!endDate && date.toDateString() === startDate.toDateString()) {
-                    info.push(`🌸 生理開始日`);
-                    break;
-                }
-            }
-            
-            // 🔧 複数月予測情報（生理・排卵のみ）
-            if (info.length === 0 && userData.records && userData.records.length > 0) {
-                const lastRecord = userData.records[0];
-                const lastPeriodStart = new Date(lastRecord.startDate);
-                const cycle = userData.settings.cycle || 28;
-                const period = userData.settings.period || 5;
+                info.push(`🌸 生理 ${dayNumber}日目`);
+                info.push(`期間: ${startDate.toLocaleDateString('ja-JP')} 〜 ${endDate.toLocaleDateString('ja-JP')}`);
+                info.push(`全期間: ${totalDays}日間`);
                 
-                // 複数月の予測をチェック
-                for (let cycleCount = 1; cycleCount <= 6; cycleCount++) {
-                    const predictedStart = new Date(lastPeriodStart);
-                    predictedStart.setDate(lastPeriodStart.getDate() + (cycle * cycleCount));
-                    
-                    const predictedEnd = new Date(predictedStart);
-                    predictedEnd.setDate(predictedStart.getDate() + period - 1);
-                    
-                    // 予測生理期間
-                    if (date >= predictedStart && date <= predictedEnd) {
-                        const dayNumber = Math.floor((date - predictedStart) / (1000 * 60 * 60 * 24)) + 1;
-                        info.push(`🌸 生理予測 ${dayNumber}日目`);
-                        info.push(`予測期間: ${predictedStart.toLocaleDateString('ja-JP')} 〜 ${predictedEnd.toLocaleDateString('ja-JP')}`);
-                        break;
-                    }
-                    
-                    // 予測排卵日
-                    const predictedOvulation = new Date(predictedStart);
-                    predictedOvulation.setDate(predictedStart.getDate() - 14);
-                    
-                    if (date.toDateString() === predictedOvulation.toDateString()) {
-                        info.push(`🥚 排卵予測日`);
-                        info.push(`妊娠しやすい時期です`);
-                        break;
-                    }
+                if (dayNumber === 1) {
+                    info.push(`✨ 開始日`);
+                } else if (dayNumber === totalDays) {
+                    info.push(`🏁 最終日`);
                 }
+                return info.join('<br>');
             }
-            
-            // 従来の予測情報
-            if (info.length === 0 && userData.predictions) {
-                if (userData.predictions.nextPeriod) {
-                    const nextStart = new Date(userData.predictions.nextPeriod.startDate);
-                    const nextEnd = new Date(userData.predictions.nextPeriod.endDate);
-                    
-                    if (date >= nextStart && date <= nextEnd) {
-                        const dayNumber = Math.floor((date - nextStart) / (1000 * 60 * 60 * 24)) + 1;
-                        info.push(`🌸 生理予測 ${dayNumber}日目`);
-                        info.push(`予測期間: ${nextStart.toLocaleDateString('ja-JP')} 〜 ${nextEnd.toLocaleDateString('ja-JP')}`);
-                    }
-                }
-                
-                if (userData.predictions.ovulation) {
-                    const ovulationDate = new Date(userData.predictions.ovulation.date);
-                    
-                    if (date.toDateString() === ovulationDate.toDateString()) {
-                        info.push(`🥚 排卵予定日`);
-                        info.push(`妊娠しやすい時期です`);
-                    }
-                }
+        } else {
+            if (isSameDate(date, startDate)) {
+                info.push(`🌸 生理開始日`);
+                info.push(`記録日: ${startDate.toLocaleDateString('ja-JP')}`);
+                return info.join('<br>');
             }
-            
-            // 今日の場合
-            if (date.toDateString() === today.toDateString()) {
-                info.unshift(`✨ 今日`);
-                
-                if (userData.currentPhase) {
-                    info.push(`現在: ${userData.currentPhase.description}`);
-                }
-            }
-            
-            if (info.length === 0) {
-                info.push('特別な予定はありません');
-            }
-            
-            return info.join('<br>');
         }
-
+    }
+    
+    // 🔧 複数月予測情報（表示修正）
+    if (userData.records && userData.records.length > 0) {
+        const lastRecord = userData.records[0];
+        const lastPeriodStart = new Date(lastRecord.startDate);
+        const cycle = userData.settings.cycle || 28;
+        const period = userData.settings.period || 5;
+        
+        console.log('🔮 Checking predictions:', {
+            lastPeriodStart: lastPeriodStart.toISOString().split('T')[0],
+            cycle: cycle,
+            period: period
+        });
+        
+        // 複数月の予測をチェック
+        for (let cycleCount = 1; cycleCount <= 6; cycleCount++) {
+            const predictedStart = new Date(lastPeriodStart);
+            predictedStart.setDate(lastPeriodStart.getDate() + (cycle * cycleCount));
+            
+            // 🔧 重要修正：予測終了日を正確に計算
+            const predictedEnd = new Date(predictedStart);
+            predictedEnd.setDate(predictedStart.getDate() + period - 1);
+            
+            console.log(`🔮 Prediction cycle ${cycleCount}:`, {
+                predictedStart: predictedStart.toISOString().split('T')[0],
+                predictedEnd: predictedEnd.toISOString().split('T')[0],
+                period: period,
+                checkingDate: date.toISOString().split('T')[0]
+            });
+            
+            // 🔧 予測生理期間内かチェック
+            if (isDateInRange(date, predictedStart, predictedEnd)) {
+                const dayNumber = calculateDayNumber(date, predictedStart);
+                
+                console.log('✅ Found in predicted period:', {
+                    dayNumber: dayNumber,
+                    period: period
+                });
+                
+                info.push(`🌸 生理予測 ${dayNumber}日目`);
+                info.push(`予測期間: ${predictedStart.toLocaleDateString('ja-JP')} 〜 ${predictedEnd.toLocaleDateString('ja-JP')}`);
+                info.push(`予測総日数: ${period}日間`);
+                
+                if (dayNumber === 1) {
+                    info.push(`✨ 予測開始日`);
+                } else if (dayNumber === period) {
+                    info.push(`🏁 予測最終日`);
+                }
+                
+                // 次回生理予定までの日数（今日より未来の場合のみ）
+                const today = new Date();
+                const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                const predictedStartOnly = new Date(predictedStart.getFullYear(), predictedStart.getMonth(), predictedStart.getDate());
+                
+                if (predictedStartOnly > todayOnly) {
+                    const daysUntil = Math.round((predictedStartOnly - todayOnly) / (1000 * 60 * 60 * 24));
+                    info.push(`⏰ あと${daysUntil}日で開始予定`);
+                } else if (predictedStartOnly <= todayOnly && isDateInRange(today, predictedStart, predictedEnd)) {
+                    // 予測期間中の場合
+                    const remainingDays = Math.round((new Date(predictedEnd.getFullYear(), predictedEnd.getMonth(), predictedEnd.getDate()) - todayOnly) / (1000 * 60 * 60 * 24));
+                    if (remainingDays > 0) {
+                        info.push(`⏰ あと${remainingDays}日で終了予定`);
+                    }
+                }
+                
+                return info.join('<br>');
+            }
+            
+            // 予測排卵日
+            const predictedOvulation = new Date(predictedStart);
+            predictedOvulation.setDate(predictedStart.getDate() - 14);
+            
+            if (isSameDate(date, predictedOvulation)) {
+                info.push(`🥚 排卵予測日`);
+                info.push(`妊娠しやすい時期です`);
+                info.push(`次回生理予測: ${predictedStart.toLocaleDateString('ja-JP')}`);
+                
+                const daysToNextPeriod = Math.round((new Date(predictedStart.getFullYear(), predictedStart.getMonth(), predictedStart.getDate()) - 
+                                                   new Date(date.getFullYear(), date.getMonth(), date.getDate())) / (1000 * 60 * 60 * 24));
+                info.push(`⏰ 次回生理まであと${daysToNextPeriod}日`);
+                
+                return info.join('<br>');
+            }
+        }
+    }
+    
+    // 従来の予測情報 - 修正版
+    if (userData.predictions) {
+        if (userData.predictions.nextPeriod) {
+            const nextStart = new Date(userData.predictions.nextPeriod.startDate);
+            const nextEnd = new Date(userData.predictions.nextPeriod.endDate);
+            
+            if (isDateInRange(date, nextStart, nextEnd)) {
+                const dayNumber = calculateDayNumber(date, nextStart);
+                const totalDays = Math.round((new Date(nextEnd.getFullYear(), nextEnd.getMonth(), nextEnd.getDate()) - 
+                                           new Date(nextStart.getFullYear(), nextStart.getMonth(), nextStart.getDate())) / (1000 * 60 * 60 * 24)) + 1;
+                
+                info.push(`🌸 生理予測 ${dayNumber}日目`);
+                info.push(`予測期間: ${nextStart.toLocaleDateString('ja-JP')} 〜 ${nextEnd.toLocaleDateString('ja-JP')}`);
+                info.push(`予測総日数: ${totalDays}日間`);
+                
+                if (dayNumber === 1) {
+                    info.push(`✨ 予測開始日`);
+                } else if (dayNumber === totalDays) {
+                    info.push(`🏁 予測最終日`);
+                }
+                
+                return info.join('<br>');
+            }
+        }
+        
+        if (userData.predictions.ovulation) {
+            const ovulationDate = new Date(userData.predictions.ovulation.date);
+            
+            if (isSameDate(date, ovulationDate)) {
+                info.push(`🥚 排卵予定日`);
+                info.push(`妊娠しやすい時期です`);
+                
+                if (userData.predictions.ovulation.fertileStart && userData.predictions.ovulation.fertileEnd) {
+                    const fertileStart = new Date(userData.predictions.ovulation.fertileStart);
+                    const fertileEnd = new Date(userData.predictions.ovulation.fertileEnd);
+                    info.push(`妊娠可能期間: ${fertileStart.toLocaleDateString('ja-JP')} 〜 ${fertileEnd.toLocaleDateString('ja-JP')}`);
+                }
+                
+                return info.join('<br>');
+            }
+        }
+    }
+    
+    // 今日の場合
+    const today = new Date();
+    if (isSameDate(date, today)) {
+        info.unshift(`✨ 今日`);
+        
+        if (userData.currentPhase) {
+            info.push(`現在の状態: ${userData.currentPhase.description}`);
+        }
+        
+        if (userData.records && userData.records.length > 0) {
+            const lastRecord = userData.records[0];
+            const lastStart = new Date(lastRecord.startDate);
+            const daysSinceLastPeriod = Math.round((new Date(today.getFullYear(), today.getMonth(), today.getDate()) - 
+                                                   new Date(lastStart.getFullYear(), lastStart.getMonth(), lastStart.getDate())) / (1000 * 60 * 60 * 24));
+            
+            info.push(`前回生理から: ${daysSinceLastPeriod + 1}日目`);
+        }
+        
+        return info.join('<br>');
+    }
+    
+    // デフォルト情報
+    info.push('特別な予定はありません');
+    
+    if (userData.records && userData.records.length > 0) {
+        const lastRecord = userData.records[0];
+        const lastStart = new Date(lastRecord.startDate);
+        info.push(`前回生理: ${lastStart.toLocaleDateString('ja-JP')}`);
+        
+        if (userData.settings && userData.settings.cycle) {
+            const nextPredicted = new Date(lastStart);
+            nextPredicted.setDate(lastStart.getDate() + userData.settings.cycle);
+            info.push(`次回予測: ${nextPredicted.toLocaleDateString('ja-JP')}`);
+        }
+    }
+    
+    console.log('📋 Final modal info:', info);
+    return info.join('<br>');
+}
         // モーダルを閉じる
         function closeDayModal() {
             document.getElementById('dayModal').style.display = 'none';

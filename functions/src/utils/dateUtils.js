@@ -1,4 +1,4 @@
-// src/utils/dateUtils.js - 日付処理ユーティリティ（排卵日計算機能追加版）
+// src/utils/dateUtils.js - 日付処理ユーティリティ（排卵日計算機能追加版・期間計算修正済み）
 
 const { LIMITS } = require('../config/constants');
 
@@ -234,7 +234,7 @@ function getInputConfirmationText(userInput, formattedDate) {
 }
 
 /**
- * 予測日を計算
+ * 🔧 修正版：予測日を計算（期間計算修正済み）
  * @param {Date} startDate - 開始日
  * @param {Object} settings - ユーザー設定 {cycle, period}
  * @returns {Object} - {endDate, nextStartDate}
@@ -244,8 +244,20 @@ function calculatePredictedDates(startDate, settings) {
     throw new Error('Invalid parameters for date calculation');
   }
   
-  const endDate = new Date(startDate.getTime() + settings.period * 24 * 60 * 60 * 1000);
-  const nextStartDate = new Date(startDate.getTime() + settings.cycle * 24 * 60 * 60 * 1000);
+  // 🔧 重要修正：開始日を1日目として計算
+  // 修正前： startDate + period日 = 期間+1日になってしまう
+  // 修正後： startDate + (period-1)日 = 正しい期間
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + settings.period - 1);
+  
+  const nextStartDate = new Date(startDate);
+  nextStartDate.setDate(startDate.getDate() + settings.cycle);
+  
+  console.log('🔧 calculatePredictedDates修正版:');
+  console.log(`  開始日: ${startDate.toISOString().split('T')[0]} (1日目)`);
+  console.log(`  期間: ${settings.period}日間`);
+  console.log(`  終了日: ${endDate.toISOString().split('T')[0]} (${settings.period}日目)`);
+  console.log(`  次回開始日: ${nextStartDate.toISOString().split('T')[0]}`);
   
   return {
     endDate,
@@ -295,7 +307,7 @@ function calculateOvulationDate(lastPeriodStart, cycle) {
 }
 
 /**
- * 現在の周期段階を判定
+ * 🔧 修正版：現在の周期段階を判定（期間判定修正済み）
  * @param {Date} lastPeriodStart - 最終生理開始日
  * @param {number} period - 生理期間（日）
  * @param {number} cycle - 生理周期（日）
@@ -312,14 +324,23 @@ function getCurrentCyclePhase(lastPeriodStart, period, cycle) {
     
     let phase, description, emoji;
     
+    console.log('🔧 getCurrentCyclePhase修正版:');
+    console.log(`  最終生理開始日: ${lastPeriodStart.toISOString().split('T')[0]}`);
+    console.log(`  今日: ${today.toISOString().split('T')[0]}`);
+    console.log(`  開始日からの日数: ${daysSinceStart}日目 (0=開始日)`);
+    console.log(`  生理期間: ${period}日間`);
+    
     if (daysSinceStart < 0) {
       phase = 'unknown';
       description = '不明';
       emoji = '❓';
     } else if (daysSinceStart < period) {
+      // 🔧 修正：開始日を0日目として計算するため、period未満で生理中
+      const currentDay = daysSinceStart + 1; // 表示用は1日目から
       phase = 'menstrual';
-      description = '生理中';
+      description = `生理中 (${currentDay}日目)`;
       emoji = '🩸';
+      console.log(`  → 生理中: ${currentDay}/${period}日目`);
     } else if (daysSinceStart < 13) {
       phase = 'follicular';
       description = '卵胞期';
@@ -382,7 +403,7 @@ function getDaysUntilNextPeriod(lastPeriodStart, cycle) {
 }
 
 /**
- * 生理記録の詳細情報を生成
+ * 🔧 修正版：生理記録の詳細情報を生成（期間計算修正済み）
  * @param {Object} record - 生理記録データ
  * @param {Object} settings - ユーザー設定
  * @returns {Object} - 詳細情報
@@ -394,10 +415,21 @@ function generatePeriodDetails(record, settings) {
 
   try {
     const startDate = record.startDate.toDate ? record.startDate.toDate() : new Date(record.startDate);
-    const endDate = record.endDate.toDate ? record.endDate.toDate() : new Date(record.endDate);
+    const endDate = record.endDate ? 
+      (record.endDate.toDate ? record.endDate.toDate() : new Date(record.endDate)) : 
+      null;
     
-    // 実際の日数を計算
-    const actualDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    // 🔧 重要修正：実際の日数を正しく計算（開始日を1日目として）
+    let actualDays = settings.period; // デフォルト値
+    if (endDate) {
+      actualDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    }
+    
+    console.log('🔧 generatePeriodDetails修正版:');
+    console.log(`  開始日: ${startDate.toISOString().split('T')[0]}`);
+    console.log(`  終了日: ${endDate ? endDate.toISOString().split('T')[0] : 'null'}`);
+    console.log(`  実際の日数: ${actualDays}日間`);
+    console.log(`  予想日数: ${settings.period}日間`);
     
     // 排卵日計算
     const ovulationInfo = calculateOvulationDate(startDate, settings.cycle);

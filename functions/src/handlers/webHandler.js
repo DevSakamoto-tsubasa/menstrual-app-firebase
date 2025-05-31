@@ -1,9 +1,13 @@
-// functions/src/handlers/webHandler.js - 最新版（新LIFF ID対応）
+// functions/src/handlers/webHandler.js - LIFF対応パートナー機能完全版 (第1部)
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const { getUserSettings, getUserRecords, userExists, updateUserSetting, ensureUserExists } = require('../utils/firestoreUtils');
 const { getCurrentCyclePhase, calculateOvulationDate, getDaysUntilNextPeriod } = require('../utils/dateUtils');
+const { 
+  getPartnerId,
+  getPartnershipData 
+} = require('./partnerHandler');
 
 /**
  * セキュアトークンの生成
@@ -76,6 +80,23 @@ async function validateAndEnsureUser(userId) {
     console.error('User validation error:', error);
     return false;
   }
+}
+
+/**
+ * ユニークID生成
+ */
+function generateUniqueId() {
+  const timestamp = Date.now().toString(36);
+  const randomStr = Math.random().toString(36).substring(2, 8);
+  return `${timestamp}_${randomStr}`;
+}
+
+/**
+ * パートナーシップID生成
+ */
+function generatePartnershipId(user1, user2) {
+  const sortedUsers = [user1, user2].sort();
+  return `${sortedUsers[0]}_${sortedUsers[1]}`;
 }
 
 /**
@@ -210,6 +231,8 @@ const saveInitialSettings = functions
     }
   });
 
+  // functions/src/handlers/webHandler.js - LIFF対応パートナー機能完全版 (第2部)
+
 /**
  * ダッシュボードデータ取得API (LIFF + トークン両対応・デバッグ強化版)
  */
@@ -341,7 +364,9 @@ const getDashboardData = functions
             dashboard: '2007500037-w97Oo2kv',
             setup: '2007500037-Vw4nPLEq',
             calendar: '2007500037-Yb3edQ5o',
-            date_entry: '2007500037-vdpkmNwL'
+            date_entry: '2007500037-vdpkmNwL',
+            partner: '2007500037-XROaPWoj',
+            partner_invite: '2007500037-PartnerInv'
           }
         }
       };
@@ -552,6 +577,377 @@ const updateWebSettings = functions
   });
 
 /**
+ * パートナーデータ取得API
+ */
+const getPartnerData = functions
+  .region('asia-northeast1')
+  .https.onRequest(async (req, res) => {
+    console.log('=== getPartnerData called ===');
+    
+    try {
+      // CORS設定
+      res.set('Access-Control-Allow-Origin', '*');
+      res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+      
+      if (req.method === 'OPTIONS') {
+        return res.status(200).send('');
+      }
+      
+      let userId;
+      
+      // 認証処理
+      if (req.method === 'GET') {
+        if (req.query.userId) {
+          userId = req.query.userId;
+        } else if (req.query.token) {
+          const tokenData = verifyToken(req.query.token);
+          if (!tokenData) {
+            return res.status(401).json({ error: 'Invalid or expired token' });
+          }
+          userId = tokenData.userId;
+        }
+      } else if (req.method === 'POST') {
+        const { userId: requestUserId, token } = req.body || {};
+        if (requestUserId) {
+          userId = requestUserId;
+        } else if (token) {
+          const tokenData = verifyToken(token);
+          if (!tokenData) {
+            return res.status(401).json({ error: 'Invalid or expired token' });
+          }
+          userId = tokenData.userId;
+        }
+      }
+      
+      if (!userId) {
+        return res.status(400).json({ error: 'User ID or token required' });
+      }
+      
+      // ユーザーID検証
+      const isValid = await validateAndEnsureUser(userId);
+      if (!isValid) {
+        return res.status(400).json({ error: 'Invalid user ID' });
+      }
+      
+      console.log('Getting partner data for user:', userId?.substring(0, 8) + '...');
+      
+      // パートナー情報取得
+      const partnerId = await getPartnerId(userId);
+      const partnershipData = await getPartnershipData(userId);
+      
+      if (!partnerId) {
+        // パートナー未接続
+        return res.status(200).json({
+          hasPartner: false,
+          message: 'No partner connected'
+        });
+      }
+      
+      // パートナー接続済み
+      const connectionDate = partnershipData?.createdAt?.toDate()?.toLocaleDateString('ja-JP') || '不明';
+      
+      res.status(200).json({
+        hasPartner: true,
+        partnerId: partnerId.substring(0, 8) + '...',
+        connectionDate: connectionDate,
+        partnershipData: {
+          status: partnershipData?.status || 'active',
+          createdAt: partnershipData?.createdAt?.toDate()?.toISOString() || null,
+          connectionMethod: partnershipData?.connectionMethod || 'unknown'
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error in getPartnerData:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // functions/src/handlers/webHandler.js - LIFF対応パートナー機能完全版 (第3部)
+
+/**
+ * パートナー招待リンク生成API
+ */
+const generatePartnerInvite = functions
+  .region('asia-northeast1')
+  .https.onRequest(async (req, res) => {
+    console.log('=== generatePartnerInvite called ===');
+    
+    try {
+      res.set('Access-Control-Allow-Origin', '*');
+      res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+      res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      
+      if (req.method === 'OPTIONS') {
+        return res.status(200).send('');
+      }
+      
+      let userId;
+      const { userId: requestUserId, token } = req.body;
+      
+      // 認証処理
+      if (requestUserId) {
+        userId = requestUserId;
+      } else if (token) {
+        const tokenData = verifyToken(token);
+        if (!tokenData) {
+          return res.status(401).json({ error: 'Invalid token' });
+        }
+        userId = tokenData.userId;
+      } else {
+        return res.status(400).json({ error: 'Authentication required' });
+      }
+      
+      // 既存パートナーチェック
+      const existingPartnerId = await getPartnerId(userId);
+      if (existingPartnerId) {
+        return res.status(400).json({ 
+          error: 'Partner already exists',
+          partnerId: existingPartnerId 
+        });
+      }
+      
+      // 招待データ生成
+      const inviteId = generateUniqueId();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24時間後
+      
+      const inviteData = {
+        inviteId: inviteId,
+        inviterUserId: userId,
+        status: 'pending',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+        type: 'liff_partner_invite'
+      };
+      
+      // Firestoreに保存
+      await admin.firestore().collection('partnerInvites').doc(inviteId).set(inviteData);
+      
+      // LIFF招待URL生成
+      const PARTNER_INVITE_LIFF_ID = '2007500037-PartnerInv'; // 専用LIFF ID
+      const inviteUrl = `https://liff.line.me/${PARTNER_INVITE_LIFF_ID}?inviteId=${inviteId}`;
+      
+      // LINE共有用URL生成
+      const shareText = encodeURIComponent(`🌸 生理日共有アプリのパートナー招待\n\n💕 一緒に健康管理をしませんか？\n下のリンクをタップして承認してください！\n\n有効期限: 24時間`);
+      const lineShareUrl = `https://line.me/R/msg/text/?${shareText}%0A%0A${encodeURIComponent(inviteUrl)}`;
+      
+      console.log(`Partner invite generated: ${inviteId} for user: ${userId}`);
+      
+      res.status(200).json({
+        success: true,
+        inviteId: inviteId,
+        inviteUrl: inviteUrl,
+        lineShareUrl: lineShareUrl,
+        expiresAt: expiresAt.toISOString()
+      });
+      
+    } catch (error) {
+      console.error('Error in generatePartnerInvite:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+/**
+ * 招待情報取得API（承認画面用）
+ */
+const getPartnerInviteInfo = functions
+  .region('asia-northeast1')
+  .https.onRequest(async (req, res) => {
+    try {
+      res.set('Access-Control-Allow-Origin', '*');
+      res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+      res.set('Access-Control-Allow-Headers', 'Content-Type');
+      
+      if (req.method === 'OPTIONS') {
+        return res.status(200).send('');
+      }
+      
+      const { inviteId } = req.query;
+      
+      if (!inviteId) {
+        return res.status(400).json({ error: 'Invite ID required' });
+      }
+      
+      // 招待データ取得
+      const inviteDoc = await admin.firestore().collection('partnerInvites').doc(inviteId).get();
+      
+      if (!inviteDoc.exists) {
+        return res.status(404).json({ error: 'Invite not found' });
+      }
+      
+      const inviteData = inviteDoc.data();
+      
+      // 有効期限チェック
+      const now = new Date();
+      const expiresAt = inviteData.expiresAt.toDate();
+      
+      if (now > expiresAt || inviteData.status !== 'pending') {
+        return res.status(400).json({ 
+          error: 'Invite expired or already used',
+          status: inviteData.status 
+        });
+      }
+      
+      // 招待者情報取得（表示用）
+      const inviterInfo = await getUserSettings(inviteData.inviterUserId);
+      
+      res.status(200).json({
+        success: true,
+        inviteData: {
+          inviteId: inviteId,
+          inviterUserId: inviteData.inviterUserId.substring(0, 8) + '...',
+          inviterName: inviterInfo?.displayName || 'パートナー',
+          createdAt: inviteData.createdAt.toDate().toISOString(),
+          expiresAt: inviteData.expiresAt.toDate().toISOString(),
+          status: inviteData.status
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error in getPartnerInviteInfo:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+/**
+ * パートナー招待承認API
+ */
+const acceptPartnerInvite = functions
+  .region('asia-northeast1')
+  .https.onRequest(async (req, res) => {
+    try {
+      res.set('Access-Control-Allow-Origin', '*');
+      res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+      res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      
+      if (req.method === 'OPTIONS') {
+        return res.status(200).send('');
+      }
+      
+      const { inviteId, userId } = req.body;
+      
+      if (!inviteId || !userId) {
+        return res.status(400).json({ error: 'Invite ID and User ID required' });
+      }
+      
+      // ユーザー検証・作成
+      const isValid = await validateAndEnsureUser(userId);
+      if (!isValid) {
+        return res.status(400).json({ error: 'Invalid user ID' });
+      }
+      
+      // 既存パートナーチェック
+      const existingPartnerId = await getPartnerId(userId);
+      if (existingPartnerId) {
+        return res.status(400).json({ 
+          error: 'User already has partner',
+          partnerId: existingPartnerId 
+        });
+      }
+      
+      // 招待データ取得・検証
+      const inviteDoc = await admin.firestore().collection('partnerInvites').doc(inviteId).get();
+      
+      if (!inviteDoc.exists) {
+        return res.status(404).json({ error: 'Invite not found' });
+      }
+      
+      const inviteData = inviteDoc.data();
+      
+      // 自分の招待でないかチェック
+      if (inviteData.inviterUserId === userId) {
+        return res.status(400).json({ error: 'Cannot accept own invite' });
+      }
+      
+      // 有効期限・ステータスチェック
+      const now = new Date();
+      const expiresAt = inviteData.expiresAt.toDate();
+      
+      if (now > expiresAt) {
+        await admin.firestore().collection('partnerInvites').doc(inviteId).update({
+          status: 'expired',
+          expiredAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        return res.status(400).json({ error: 'Invite expired' });
+      }
+      
+      if (inviteData.status !== 'pending') {
+        return res.status(400).json({ 
+          error: 'Invite already processed',
+          status: inviteData.status 
+        });
+      }
+      
+      // パートナーシップ作成
+      const inviterUserId = inviteData.inviterUserId;
+      const partnershipId = generatePartnershipId(inviterUserId, userId);
+      
+      const partnershipData = {
+        user1: inviterUserId,
+        user2: userId,
+        status: 'active',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        activatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        inviteId: inviteId,
+        invitedBy: inviterUserId,
+        connectionMethod: 'liff_invite'
+      };
+      
+      // トランザクション実行
+      await admin.firestore().runTransaction(async (transaction) => {
+        // パートナーシップ作成
+        transaction.set(
+          admin.firestore().collection('partners').doc(partnershipId), 
+          partnershipData
+        );
+        
+        // 招待ステータス更新
+        transaction.update(
+          admin.firestore().collection('partnerInvites').doc(inviteId),
+          {
+            status: 'accepted',
+            acceptedBy: userId,
+            acceptedAt: admin.firestore.FieldValue.serverTimestamp()
+          }
+        );
+        
+        // ユーザー最終活動日更新
+        transaction.update(
+          admin.firestore().collection('users').doc(userId),
+          {
+            lastActiveAt: admin.firestore.FieldValue.serverTimestamp(),
+            partnerConnectedAt: admin.firestore.FieldValue.serverTimestamp()
+          }
+        );
+        
+        transaction.update(
+          admin.firestore().collection('users').doc(inviterUserId),
+          {
+            partnerConnectedAt: admin.firestore.FieldValue.serverTimestamp()
+          }
+        );
+      });
+      
+      console.log(`Partner connection established: ${inviterUserId} ↔ ${userId}`);
+      
+      // 招待者に通知送信
+      await notifyInviterAcceptance(inviterUserId, userId);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Partner connection established',
+        partnershipId: partnershipId,
+        partnerId: inviterUserId.substring(0, 8) + '...'
+      });
+      
+    } catch (error) {
+      console.error('Error in acceptPartnerInvite:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+/**
  * LIFF トークン検証・ユーザー情報取得 (複数LIFF ID対応)
  */
 const verifyLiffToken = functions
@@ -585,7 +981,9 @@ const verifyLiffToken = functions
         'dashboard': '2007500037-w97Oo2kv',
         'setup': '2007500037-Vw4nPLEq', 
         'calendar': '2007500037-Yb3edQ5o',
-        'date_entry': '2007500037-vdpkmNwL'
+        'date_entry': '2007500037-vdpkmNwL',
+        'partner': '2007500037-XROaPWoj',
+        'partner_invite': '2007500037-PartnerInv'
       };
       
       // ユーザー存在確認・作成
@@ -620,7 +1018,7 @@ const verifyLiffToken = functions
   });
 
 /**
- * 生理記録保存API (開始日入力画面用)
+ * 生理記録保存API (開始日入力画面用・パートナー通知対応)
  */
 const savePeriodRecord = functions
   .region('asia-northeast1')
@@ -697,6 +1095,14 @@ const savePeriodRecord = functions
         lastRecordAt: admin.firestore.FieldValue.serverTimestamp()
       });
       
+      // パートナー通知処理
+      try {
+        await sendPartnerPeriodNotification(userId, start, end, duration);
+      } catch (notificationError) {
+        console.error('Partner notification error:', notificationError);
+        // 通知エラーは記録保存の成功に影響しない
+      }
+      
       res.status(200).json({
         success: true,
         recordId: recordDoc.id,
@@ -712,13 +1118,130 @@ const savePeriodRecord = functions
     }
   });
 
+/**
+ * 招待承認通知
+ */
+async function notifyInviterAcceptance(inviterUserId, accepterUserId) {
+  try {
+    // LINE Bot クライアントが必要
+    const line = require('@line/bot-sdk');
+    const functions = require('firebase-functions');
+    
+    const config = {
+      channelAccessToken: functions.config().line.channel_access_token,
+      channelSecret: functions.config().line.channel_secret,
+    };
+    
+    const client = new line.Client(config);
+    
+    const message = `💕 パートナー招待が承認されました！
+
+🎉 パートナーシップが成立しました
+👫 新しいパートナー: ${accepterUserId.substring(0, 8)}...
+
+✨ 今後の機能:
+• 生理開始日の自動通知
+• 健康状態の共有
+• お互いのサポート
+
+これからデータを共有して、お互いをサポートしましょう ❤️`;
+
+    await client.pushMessage(inviterUserId, {
+      type: 'text',
+      text: message
+    });
+    
+    console.log(`Invite acceptance notification sent to: ${inviterUserId}`);
+    
+  } catch (error) {
+    console.error('Error sending invite acceptance notification:', error);
+  }
+}
+
+/**
+ * パートナーへの生理開始通知（savePeriodRecord用）
+ */
+async function sendPartnerPeriodNotification(userId, startDate, endDate, duration) {
+  try {
+    console.log(`[NOTIFICATION] Starting partner notification for user: ${userId}`);
+    
+    const partnerId = await getPartnerId(userId);
+    
+    if (!partnerId) {
+      console.log('[NOTIFICATION] No partner found');
+      return;
+    }
+    
+    const partnerSettings = await getUserSettings(partnerId);
+    
+    if (!partnerSettings || !partnerSettings.notifications) {
+      console.log('[NOTIFICATION] Partner notifications disabled');
+      return;
+    }
+
+    // ユーザー設定から次回予測日を計算
+    const userSettings = await getUserSettings(userId);
+    if (!userSettings) {
+      console.log('[NOTIFICATION] User settings not found');
+      return;
+    }
+
+    const nextStartDate = new Date(startDate);
+    nextStartDate.setDate(nextStartDate.getDate() + userSettings.cycle);
+
+    const endDateStr = endDate ? 
+      endDate.toLocaleDateString('ja-JP') : 
+      `約${duration || userSettings.period}日間`;
+    
+    const notificationText = `💕 パートナーからの通知
+
+🩸 生理が始まりました
+
+📅 開始日: ${startDate.toLocaleDateString('ja-JP')}
+📅 予測終了: ${endDateStr}  
+📅 次回予測: ${nextStartDate.toLocaleDateString('ja-JP')}
+
+いつもありがとう ❤️
+お互いを大切にしながら過ごしましょう。`;
+
+    // LINE Bot クライアント設定
+    const line = require('@line/bot-sdk');
+    const functions = require('firebase-functions');
+    
+    const config = {
+      channelAccessToken: functions.config().line.channel_access_token,
+      channelSecret: functions.config().line.channel_secret,
+    };
+    
+    const client = new line.Client(config);
+
+    await client.pushMessage(partnerId, {
+      type: 'text',
+      text: notificationText
+    });
+    
+    console.log(`[NOTIFICATION] Sent successfully to: ${partnerId}`);
+
+  } catch (error) {
+    console.error('[NOTIFICATION] Error:', error);
+    throw error; // 通知エラーを上位に伝播
+  }
+}
+
 module.exports = {
+  // 既存のエクスポート
   generateSecureToken,
   verifyToken,
   saveInitialSettings,
   getDashboardData,
   getCalendarData,
   updateWebSettings,
+  savePeriodRecord,
+  
+  // 新規追加: LIFF & パートナー機能
   verifyLiffToken,
-  savePeriodRecord
+  getPartnerData,
+  generatePartnerInvite,
+  getPartnerInviteInfo,
+  acceptPartnerInvite
 };

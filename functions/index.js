@@ -705,3 +705,7 @@ exports.setupRichMenu = functions
 
 // エクスポート
 exports.notifyPartnerPeriodStart = notifyPartnerPeriodStart;
+exports.getPartnerData = webHandler.getPartnerData;
+exports.generatePartnerInvite = webHandler.generatePartnerInvite;
+exports.getPartnerInviteInfo = webHandler.getPartnerInviteInfo;
+exports.acceptPartnerInvite = webHandler.acceptPartnerInvite;

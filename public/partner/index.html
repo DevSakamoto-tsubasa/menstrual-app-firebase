@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>パートナー - 生理日共有アプリ</title>
+    <!-- LIFF SDK -->
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9ff;
+            color: #333;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+        }
+        
+        .user-info {
+            background: rgba(125, 211, 252, 0.1);
+            padding: 8px 16px;
+            font-size: 12px;
+            text-align: center;
+            color: #0284c7;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #f0f0f0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .header-subtitle {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+        
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #7dd3fc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .content {
+            padding: 20px 16px;
+        }
+        
+        .status-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        
+        .partner-connected {
+            border-left: 4px solid #10b981;
+        }
+        
+        .partner-disconnected {
+            border-left: 4px solid #f59e0b;
+        }
+        
+        .invite-acceptance {
+            border-left: 4px solid #8b5cf6;
+            background: linear-gradient(135deg, #fef7ff, #f3e8ff);
+        }
+        
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .status-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+        }
+        
+        .status-connected {
+            background: #10b981;
+        }
+        
+        .status-disconnected {
+            background: #f59e0b;
+        }
+        
+        .status-invite {
+            background: #8b5cf6;
+        }
+        
+        .status-details h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+        
+        .status-details p {
+            color: #6b7280;
+            font-size: 12px;
+        }
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .action-btn {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        
+        .btn-primary {
+            background: #7dd3fc;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0284c7;
+        }
+        
+        .btn-secondary {
+            background: #f8fafc;
+            color: #374151;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0f2fe;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .btn-accept {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            font-size: 16px;
+            padding: 16px 24px;
+            width: 100%;
+            margin-bottom: 12px;
+        }
+        
+        .btn-decline {
+            background: #f3f4f6;
+            color: #6b7280;
+            border: 2px solid #e5e7eb;
+            padding: 12px 24px;
+            width: 100%;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-1px);
+        }
+        
+        .invite-section {
+            text-align: center;
+            padding: 20px 0;
+        }
+        
+        .invite-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+        
+        .invite-description {
+            color: #6b7280;
+            margin-bottom: 20px;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+        
+        .invite-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .invite-link-display {
+            background: #f8fafc;
+            border: 2px dashed #e5e7eb;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+            display: none;
+        }
+        
+        .invite-link {
+            background: #e5e7eb;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            word-break: break-all;
+            margin: 12px 0;
+            color: #374151;
+        }
+        
+        .share-options {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 12px;
+        }
+        
+        .feature-cards {
+            margin-top: 16px;
+        }
+        
+        .feature-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: #7dd3fc;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+        
+        .feature-content h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #374151;
+        }
+        
+        .feature-content p {
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.4;
+        }
+        
+        .error-message {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px;
+            text-align: center;
+            font-size: 14px;
+            border: 1px solid #fecaca;
+        }
+        
+        .success-message {
+            background: #f0fdf4;
+            color: #166534;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px;
+            text-align: center;
+            font-size: 14px;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .info-message {
+            background: #fefbf3;
+            color: #b45309;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px;
+            text-align: center;
+            font-size: 14px;
+            border: 1px solid #fed7aa;
+        }
+        
+        .invite-info {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #8b5cf6;
+        }
+        
+        .invite-info h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .invite-info p {
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.4;
+            margin-bottom: 4px;
+        }
+        
+        .privacy-note {
+            font-size: 12px;
+            color: #a0aec0;
+            margin-top: 24px;
+            line-height: 1.4;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        
+        .hidden { display: none; }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="userInfo" class="user-info" style="display: none;">
+            <!-- ユーザー情報 -->
+        </div>
+        
+        <div class="header">
+            <div class="header-title">👫 パートナー</div>
+            <div class="header-subtitle">パートナーとの連携・サポート</div>
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <p>パートナー情報を読み込んでいます...</p>
+        </div>
+
+        <!-- 🎯 メインコンテンツエリア（動的に切り替わる） -->
+        <div id="content" class="content hidden">
+            <!-- ここに各モードのコンテンツが動的に挿入される -->
+        </div>
+
+        <div id="error" class="hidden">
+            <div class="error-message">
+                データの読み込みに失敗しました。<br>
+                再度お試しください。
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUserId = null;
+        let partnerData = null;
+        let generatedInviteLink = null;
+        let currentInviteType = null;
+        let appMode = null; // 'normal' or 'invite'
+        let inviteId = null;
+        
+        const PARTNER_LIFF_ID = '2007500037-XROaPWoj'; // 🔥 統合LIFF ID
+        const API_BASE_URL = 'https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net';
+
+        // 🚀 メイン初期化関数
+        async function initializePartnerPage() {
+            try {
+                console.log('=== Partner Page Initialization ===');
+                
+                // URLパラメータをチェック
+                const urlParams = new URLSearchParams(window.location.search);
+                const mode = urlParams.get('mode');
+                inviteId = urlParams.get('inviteId');
+                
+                if (mode === 'invite' && inviteId) {
+                    appMode = 'invite';
+                    console.log('🎯 Invite acceptance mode detected:', inviteId);
+                } else {
+                    appMode = 'normal';
+                    console.log('🎯 Normal partner management mode');
+                }
+                
+                // LIFF初期化
+                await liff.init({ 
+                    liffId: PARTNER_LIFF_ID,
+                    withLoginOnExternalBrowser: true
+                });
+                
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
+                
+                const profile = await liff.getProfile();
+                currentUserId = profile.userId;
+                
+                console.log('User authenticated:', currentUserId);
+                console.log('App mode:', appMode);
+                
+                // モードに応じて初期化
+                if (appMode === 'invite') {
+                    await initializeInviteMode();
+                } else {
+                    await initializeNormalMode();
+                }
+                
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showError('初期化に失敗しました');
+            }
+        }
+
+        // 🎯 招待承認モード初期化
+        async function initializeInviteMode() {
+            try {
+                console.log('Loading invite info for ID:', inviteId);
+                
+                const response = await fetch(`${API_BASE_URL}/getPartnerInviteInfo?inviteId=${inviteId}`);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    if (data.error === 'Invite expired or already used') {
+                        showInviteExpired();
+                    } else {
+                        showError(data.error || '招待情報の取得に失敗しました');
+                    }
+                    return;
+                }
+                
+                showInviteAcceptanceUI(data.inviteData);
+                
+            } catch (error) {
+                console.error('Error in invite mode:', error);
+                showError('招待情報の読み込みに失敗しました');
+            }
+        }
+
+        // 👫 通常モード初期化
+        async function initializeNormalMode() {
+            try {
+                await loadPartnerData();
+            } catch (error) {
+                console.error('Error in normal mode:', error);
+                showError('パートナーデータの読み込みに失敗しました');
+            }
+        }
+        // 📱 招待承認UI表示
+        function showInviteAcceptanceUI(inviteData) {
+            hideLoading();
+            document.getElementById('content').classList.remove('hidden');
+            
+            const content = document.getElementById('content');
+            content.innerHTML = `
+                <div class="status-card invite-acceptance">
+                    <div class="status-header">
+                        <div class="status-icon status-invite">💌</div>
+                        <div class="status-details">
+                            <h3>パートナー招待</h3>
+                            <p>あなたを招待しています</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="invite-info">
+                    <h4>👤 招待者情報</h4>
+                    <p><strong>${inviteData.inviterName}</strong></p>
+                    <p>招待日: ${new Date(inviteData.createdAt).toLocaleDateString('ja-JP')}</p>
+                    <p>有効期限: ${new Date(inviteData.expiresAt).toLocaleDateString('ja-JP')} ${new Date(inviteData.expiresAt).toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'})}</p>
+                </div>
+                
+                <div class="feature-cards">
+                    <div class="feature-card">
+                        <div class="feature-icon">🩸</div>
+                        <div class="feature-content">
+                            <h4>自動通知</h4>
+                            <p>生理開始時にパートナーに自動で通知されます</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">💝</div>
+                        <div class="feature-content">
+                            <h4>サポート情報</h4>
+                            <p>お互いの健康状態を共有してサポートし合えます</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">📅</div>
+                        <div class="feature-content">
+                            <h4>予測共有</h4>
+                            <p>次回生理日や排卵日の予測を共有できます</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="quick-actions" style="grid-template-columns: 1fr; gap: 12px; margin-top: 24px;">
+                    <button class="action-btn btn-accept" onclick="acceptInvite()">
+                        💕 招待を承認する
+                    </button>
+                    <button class="action-btn btn-decline" onclick="declineInvite()">
+                        ❌ 辞退する
+                    </button>
+                </div>
+                
+                <div class="privacy-note">
+                    🔒 プライバシー保護<br>
+                    生理日情報のみが共有され、その他の個人情報は保護されます。
+                    いつでも関係を解除することができます。
+                </div>
+            `;
+        }
+
+        // 👫 パートナーデータ読み込み（通常モード）
+        async function loadPartnerData() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/getPartnerData`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: currentUserId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                hideLoading();
+                document.getElementById('content').classList.remove('hidden');
+                
+                if (data.hasPartner) {
+                    // パートナー接続済み
+                    showConnectedPartnerUI(data);
+                } else {
+                    // パートナー未接続
+                    showDisconnectedPartnerUI();
+                }
+                
+            } catch (error) {
+                console.error('Error loading partner data:', error);
+                showError('パートナーデータの読み込みに失敗しました');
+            }
+        }
+
+        // 📱 接続済みパートナーUI
+        function showConnectedPartnerUI(data) {
+            const content = document.getElementById('content');
+            content.innerHTML = `
+                <div class="status-card partner-connected">
+                    <div class="status-header">
+                        <div class="status-icon status-connected">👫</div>
+                        <div class="status-details">
+                            <h3>パートナー接続中</h3>
+                            <p>パートナー: ${data.partnerId}</p>
+                            <p>接続日: ${data.connectionDate}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="quick-actions">
+                        <button class="action-btn btn-primary" onclick="openSupportSettings()">
+                            💝 サポート設定
+                        </button>
+                        <button class="action-btn btn-secondary" onclick="viewPartnerInfo()">
+                            📊 パートナー情報
+                        </button>
+                        <button class="action-btn btn-secondary" onclick="testNotification()">
+                            🔔 通知テスト
+                        </button>
+                        <button class="action-btn btn-danger" onclick="disconnectPartner()">
+                            🔗 接続解除
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="feature-cards">
+                    <div class="feature-card">
+                        <div class="feature-icon">🩸</div>
+                        <div class="feature-content">
+                            <h4>自動通知</h4>
+                            <p>生理開始時にパートナーに自動で通知されます</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">💝</div>
+                        <div class="feature-content">
+                            <h4>サポート情報</h4>
+                            <p>生理中にして欲しいことや食べたいものを共有</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">📅</div>
+                        <div class="feature-content">
+                            <h4>予測共有</h4>
+                            <p>次回生理日や排卵日の予測を共有</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 📱 未接続パートナーUI
+        function showDisconnectedPartnerUI() {
+            const content = document.getElementById('content');
+            content.innerHTML = `
+                <div class="status-card partner-disconnected">
+                    <div class="status-header">
+                        <div class="status-icon status-disconnected">👤</div>
+                        <div class="status-details">
+                            <h3>パートナー未接続</h3>
+                            <p>パートナーを招待して一緒に健康管理を始めましょう</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="invite-section">
+                    <div class="invite-title">パートナーを招待</div>
+                    <div class="invite-description">
+                        簡単にパートナーを招待できます。<br>
+                        承認用リンクをタップするだけで接続完了！
+                    </div>
+                    
+                    <div class="invite-options">
+                        <button class="action-btn btn-primary" onclick="generateLiffInvite()" style="width: 100%;">
+                            🌟 招待リンクを作成
+                        </button>
+                    </div>
+                    
+                    <div id="inviteLinkDisplay" class="invite-link-display">
+                        <p id="inviteTypeLabel"><strong>招待リンクが生成されました！</strong></p>
+                        <div id="inviteLink" class="invite-link">
+                            生成中...
+                        </div>
+                        <div class="share-options">
+                            <button class="action-btn btn-primary" onclick="shareViaLine()">
+                                📱 LINEで送信
+                            </button>
+                            <button class="action-btn btn-secondary" onclick="copyLink()">
+                                📋 コピー
+                            </button>
+                        </div>
+                        <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                            ⏰ リンクは24時間有効です
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="feature-cards">
+                    <div class="feature-card">
+                        <div class="feature-icon">❤️</div>
+                        <div class="feature-content">
+                            <h4>お互いを思いやる</h4>
+                            <p>パートナーの体調を共有して、サポートし合えます</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">🔒</div>
+                        <div class="feature-content">
+                            <h4>プライバシー保護</h4>
+                            <p>生理日情報のみが共有され、他の情報は保護されます</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <div class="feature-content">
+                            <h4>健康管理</h4>
+                            <p>二人で一緒に健康を管理し、理解を深められます</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 🔥 LIFF招待リンク生成
+        async function generateLiffInvite() {
+            try {
+                console.log('Generating LIFF invite...');
+                
+                const response = await fetch(`${API_BASE_URL}/generatePartnerInvite`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: currentUserId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'LIFF招待の生成に失敗しました');
+                }
+                
+                generatedInviteLink = data.inviteUrl;
+                
+                // 表示を更新
+                document.getElementById('inviteTypeLabel').innerHTML = 
+                    '<strong>🌟 招待リンクが生成されました！</strong>';
+                document.getElementById('inviteLink').textContent = data.inviteUrl;
+                document.getElementById('inviteLinkDisplay').style.display = 'block';
+                
+                console.log('LIFF invite generated:', data.inviteUrl);
+                
+            } catch (error) {
+                console.error('Error generating LIFF invite:', error);
+                showMessage('招待リンクの生成に失敗しました: ' + error.message, 'error');
+            }
+        }
+
+        // 📱 LINEで共有
+        async function shareViaLine() {
+            try {
+                if (!generatedInviteLink) {
+                    showMessage('招待リンクが生成されていません', 'error');
+                    return;
+                }
+                
+                const shareText = `🌸 生理日共有アプリのパートナー招待\n\n💕 一緒に健康管理をしませんか？\n下のリンクをタップして承認してください！\n\n${generatedInviteLink}\n\n⏰ 有効期限: 24時間`;
+                
+                if (liff.isInClient()) {
+                    // LINE内ブラウザの場合は共有API使用
+                    await liff.shareTargetPicker([{
+                        type: 'text',
+                        text: shareText
+                    }]);
+                } else {
+                    // 外部ブラウザの場合はクリップボードにコピー
+                    await navigator.clipboard.writeText(shareText);
+                    showMessage('招待メッセージをコピーしました！\nLINEに貼り付けて送信してください。', 'success');
+                }
+                
+            } catch (error) {
+                console.error('Error sharing via LINE:', error);
+                showMessage('共有に失敗しました', 'error');
+            }
+        }
+
+        // 📋 リンクをコピー
+        async function copyLink() {
+            try {
+                if (!generatedInviteLink) {
+                    showMessage('招待リンクが生成されていません', 'error');
+                    return;
+                }
+                
+                await navigator.clipboard.writeText(generatedInviteLink);
+                showMessage('招待リンクをコピーしました！', 'success');
+                
+            } catch (error) {
+                console.error('Error copying link:', error);
+                showMessage('コピーに失敗しました', 'error');
+            }
+        }
+
+        // 💕 招待承認
+        async function acceptInvite() {
+            try {
+                const acceptBtn = document.querySelector('.btn-accept');
+                acceptBtn.textContent = '承認中...';
+                acceptBtn.disabled = true;
+                
+                const response = await fetch(`${API_BASE_URL}/acceptPartnerInvite`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        inviteId: inviteId,
+                        userId: currentUserId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || '承認に失敗しました');
+                }
+                
+                console.log('Partner invite accepted successfully');
+                
+                // 成功画面を表示
+                showInviteSuccessUI();
+                
+            } catch (error) {
+                console.error('Error accepting invite:', error);
+                showMessage(error.message, 'error');
+                
+                // ボタンを元に戻す
+                const acceptBtn = document.querySelector('.btn-accept');
+                acceptBtn.textContent = '💕 招待を承認する';
+                acceptBtn.disabled = false;
+            }
+        }
+
+        // ❌ 招待辞退
+        function declineInvite() {
+            if (confirm('本当に招待を辞退しますか？')) {
+                // LIFFアプリを閉じる
+                if (liff.isInClient()) {
+                    liff.closeWindow();
+                } else {
+                    window.close();
+                }
+            }
+        }
+
+        // 🎉 招待承認成功UI
+        function showInviteSuccessUI() {
+            const content = document.getElementById('content');
+            content.innerHTML = `
+                <div class="status-card partner-connected">
+                    <div class="status-header">
+                        <div class="status-icon status-connected pulse">💕</div>
+                        <div class="status-details">
+                            <h3>承認完了！</h3>
+                            <p>パートナーシップが成立しました</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="success-message">
+                    🎉 招待が承認されました！<br>
+                    これからお互いをサポートしましょう
+                </div>
+                
+                <div class="feature-cards">
+                    <div class="feature-card">
+                        <div class="feature-icon">🩸</div>
+                        <div class="feature-content">
+                            <h4>自動通知が有効になりました</h4>
+                            <p>生理開始時にパートナーに自動で通知されます</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">💝</div>
+                        <div class="feature-content">
+                            <h4>健康情報の共有</h4>
+                            <p>お互いの健康状態をサポートし合えます</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="quick-actions" style="grid-template-columns: 1fr; gap: 12px; margin-top: 24px;">
+                    <button class="action-btn btn-primary" onclick="openMainApp()">
+                        📱 アプリのメイン画面へ
+                    </button>
+                </div>
+            `;
+        }
+
+        // 📱 期限切れUI
+        function showInviteExpired() {
+            hideLoading();
+            document.getElementById('content').classList.remove('hidden');
+            
+            const content = document.getElementById('content');
+            content.innerHTML = `
+                <div class="info-message">
+                    ⏰ この招待は期限切れです<br>
+                    新しい招待を送ってもらってください
+                </div>
+                
+                <div class="quick-actions" style="grid-template-columns: 1fr; margin-top: 24px;">
+                    <button class="action-btn btn-secondary" onclick="closeApp()">
+                        ❌ 閉じる
+                    </button>
+                </div>
+            `;
+        }
+
+        // 📱 メインアプリを開く
+        function openMainApp() {
+            // メインLIFFアプリに遷移
+            const MAIN_LIFF_ID = '2007500037-w97Oo2kv'; // メインダッシュボード
+            const appUrl = `https://liff.line.me/${MAIN_LIFF_ID}`;
+            
+            if (liff.isInClient()) {
+                // LINE内ブラウザの場合はメッセージ送信
+                liff.sendMessages([{
+                    type: 'text',
+                    text: 'ダッシュボード'
+                }]).then(() => {
+                    liff.closeWindow();
+                });
+            } else {
+                // 外部ブラウザの場合は直接遷移
+                window.location.href = appUrl;
+            }
+        }
+
+        // ❌ アプリを閉じる
+        function closeApp() {
+            if (liff.isInClient()) {
+                liff.closeWindow();
+            } else {
+                window.close();
+            }
+        }
+
+        // その他の機能（スタブ実装）
+        function openSupportSettings() {
+            showMessage('サポート設定機能は準備中です', 'info');
+        }
+
+        function viewPartnerInfo() {
+            showMessage('パートナー情報表示機能は準備中です', 'info');
+        }
+
+        function testNotification() {
+            showMessage('通知テスト機能は準備中です', 'info');
+        }
+
+        function disconnectPartner() {
+            if (confirm('本当にパートナー接続を解除しますか？')) {
+                showMessage('パートナー解除機能は準備中です', 'info');
+            }
+        }
+
+        // ユーティリティ関数
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+        }
+
+        function showError(message) {
+            hideLoading();
+            document.getElementById('error').classList.remove('hidden');
+            document.querySelector('#error .error-message').innerHTML = message;
+        }
+
+        function showMessage(message, type = 'info') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `${type}-message`;
+            messageDiv.innerHTML = message;
+            
+            const content = document.getElementById('content');
+            content.insertBefore(messageDiv, content.firstChild);
+            
+            // 3秒後に自動削除
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 3000);
+        }
+
+        // ページ読み込み時に初期化
+        document.addEventListener('DOMContentLoaded', initializePartnerPage);
+    </script>
+</body>
+</html>>

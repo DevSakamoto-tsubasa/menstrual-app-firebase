@@ -5,7 +5,216 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>パートナー - 生理日共有アプリ</title>
     <!-- LIFF SDK -->
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js">
+        // 🔄 パートナー判定ユーティリティ関数
+// 各ページの<script>タグ内に追加してください
+
+const API_BASE_URL = 'https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net';
+
+/**
+ * パートナー判定とリダイレクト処理
+ * @param {string} userId - ユーザーID
+ * @returns {boolean} - リダイレクトしたかどうか
+ */
+async function checkAndRedirectIfPartner(userId) {
+    try {
+        console.log('🔍 Checking partner role for user:', userId?.substring(0, 8) + '...');
+        
+        const response = await fetch(`${API_BASE_URL}/getPartnerData`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ userId: userId })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('📋 Partner check result:', data);
+            
+            // パートナー（招待された側）かどうか判定
+            if (data.hasPartner && data.partnership?.role === 'partner') {
+                console.log('🔄 User is a partner, redirecting to partner dashboard...');
+                
+                // リダイレクト処理
+                showPartnerRedirectMessage();
+                
+                // パートナー専用ダッシュボードにリダイレクト
+                const partnerDashboardUrl = `/partner-dashboard/?userId=${encodeURIComponent(userId)}`;
+                
+                // 2秒後にリダイレクト
+                setTimeout(() => {
+                    window.location.href = partnerDashboardUrl;
+                }, 2000);
+                
+                return true; // リダイレクト実行
+            } else if (data.hasPartner) {
+                console.log('👤 User is primary user (invited the partner)');
+            } else {
+                console.log('🔗 User has no partner connection');
+            }
+        } else {
+            console.log('❌ Partner check API failed:', response.status);
+        }
+        
+        return false; // リダイレクトしない
+        
+    } catch (error) {
+        console.error('🚨 Partner check error:', error);
+        return false; // エラー時はリダイレクトしない
+    }
+}
+
+/**
+ * パートナーリダイレクトメッセージ表示
+ */
+function showPartnerRedirectMessage() {
+    // ローディング要素を非表示
+    const loadingElement = document.getElementById('loading');
+    if (loadingElement) {
+        loadingElement.style.display = 'none';
+    }
+    
+    // メインコンテンツ要素を取得
+    let contentElement = document.getElementById('content');
+    if (!contentElement) {
+        // content要素がない場合は、body直下に作成
+        contentElement = document.createElement('div');
+        contentElement.id = 'content';
+        contentElement.style.padding = '20px';
+        document.body.appendChild(contentElement);
+    }
+    
+    // リダイレクトメッセージを表示
+    contentElement.innerHTML = `
+        <div style="
+            background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            border-left: 4px solid #0ea5e9;
+            max-width: 400px;
+            margin: 0 auto;
+        ">
+            <div style="
+                font-size: 32px;
+                margin-bottom: 12px;
+                animation: spin 2s linear infinite;
+            ">🔄</div>
+            <div style="
+                font-size: 18px;
+                font-weight: 600;
+                color: #0c4a6e;
+                margin-bottom: 8px;
+            ">パートナーダッシュボードへ移動中</div>
+            <div style="
+                color: #0369a1;
+                font-size: 14px;
+            ">
+                あなたはパートナーとして登録されています。<br>
+                専用のダッシュボードに移動します...
+            </div>
+        </div>
+        
+        <style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
+    `;
+    
+    // コンテンツを表示
+    contentElement.style.display = 'block';
+}
+
+/**
+ * LIFF初期化とパートナー判定を組み合わせた汎用関数
+ * @param {string} liffId - LIFF ID
+ * @param {function} mainCallback - メイン処理のコールバック関数
+ */
+async function initializeLiffWithPartnerCheck(liffId, mainCallback) {
+    try {
+        console.log('🚀 Initializing LIFF with partner check...');
+        
+        // LIFF初期化
+        await liff.init({ 
+            liffId: liffId,
+            withLoginOnExternalBrowser: true
+        });
+        
+        console.log('✅ LIFF initialized successfully');
+        
+        if (!liff.isLoggedIn()) {
+            console.log('🔐 User not logged in, redirecting...');
+            liff.login();
+            return;
+        }
+        
+        // プロフィール取得
+        const profile = await liff.getProfile();
+        console.log('👤 User profile obtained:', profile.displayName);
+        
+        // パートナー判定チェック
+        const isRedirected = await checkAndRedirectIfPartner(profile.userId);
+        if (isRedirected) {
+            return; // リダイレクトした場合は処理を停止
+        }
+        
+        // メイン処理を実行
+        if (typeof mainCallback === 'function') {
+            await mainCallback(profile);
+        }
+        
+    } catch (error) {
+        console.error('🚨 LIFF initialization with partner check error:', error);
+        
+        // エラー表示
+        const errorElement = document.getElementById('error') || document.body;
+        errorElement.innerHTML = `
+            <div style="
+                background: #fef2f2;
+                color: #dc2626;
+                padding: 16px;
+                border-radius: 12px;
+                margin: 16px;
+                text-align: center;
+                font-size: 14px;
+                border: 1px solid #fecaca;
+            ">
+                初期化に失敗しました。<br>
+                LINEアプリから再度アクセスしてください。
+            </div>
+        `;
+    }
+}
+
+/**
+ * 使用例:
+ * 
+ * // ダッシュボードページでの使用
+ * document.addEventListener('DOMContentLoaded', function() {
+ *     if (typeof liff !== 'undefined') {
+ *         initializeLiffWithPartnerCheck('2007500037-w97Oo2kv', async (profile) => {
+ *             // パートナーでない場合のメイン処理
+ *             showUserInfo(profile);
+ *             await loadDashboardData(profile.userId);
+ *         });
+ *     }
+ * });
+ * 
+ * // カレンダーページでの使用
+ * document.addEventListener('DOMContentLoaded', function() {
+ *     if (typeof liff !== 'undefined') {
+ *         initializeLiffWithPartnerCheck('2007500037-Yb3edQ5o', async (profile) => {
+ *             // パートナーでない場合のメイン処理
+ *             showUserInfo(profile);
+ *             await loadCalendarData(profile.userId);
+ *         });
+ *     }
+ * });
+ */
+    </script>
     <style>
         * {
             margin: 0;
@@ -781,8 +990,7 @@
                 showMessage('招待リンクの生成に失敗しました: ' + error.message, 'error');
             }
         }
-
-        // 📱 LINEで共有
+// 📱 LINEで共有
         async function shareViaLine() {
             try {
                 if (!generatedInviteLink) {
@@ -792,21 +1000,145 @@
                 
                 const shareText = `🌸 生理日共有アプリのパートナー招待\n\n💕 一緒に健康管理をしませんか？\n下のリンクをタップして承認してください！\n\n${generatedInviteLink}\n\n⏰ 有効期限: 24時間`;
                 
-                if (liff.isInClient()) {
-                    // LINE内ブラウザの場合は共有API使用
-                    await liff.shareTargetPicker([{
-                        type: 'text',
-                        text: shareText
-                    }]);
+                console.log('=== shareViaLine Debug ===');
+                console.log('generatedInviteLink:', generatedInviteLink);
+                console.log('shareText length:', shareText.length);
+                console.log('typeof liff:', typeof liff);
+                
+                // LIFF の利用可能性をチェック
+                const isLiffAvailable = typeof liff !== 'undefined';
+                let isInClient = false;
+                let isLoggedIn = false;
+                
+                if (isLiffAvailable) {
+                    try {
+                        isInClient = liff.isInClient();
+                        isLoggedIn = liff.isLoggedIn();
+                        console.log('LIFF isInClient:', isInClient);
+                        console.log('LIFF isLoggedIn:', isLoggedIn);
+                    } catch (liffCheckError) {
+                        console.log('LIFF check error:', liffCheckError);
+                        isLiffAvailable = false;
+                    }
+                }
+                
+                // LIFF が利用可能で、LINE内ブラウザで、ログイン済みの場合
+                if (isLiffAvailable && isInClient && isLoggedIn) {
+                    try {
+                        console.log('Checking shareTargetPicker availability...');
+                        
+                        // shareTargetPicker の利用可能性をチェック
+                        let canUseShareTargetPicker = false;
+                        try {
+                            if (typeof liff.isApiAvailable === 'function') {
+                                canUseShareTargetPicker = liff.isApiAvailable('shareTargetPicker');
+                            } else {
+                                // isApiAvailable が利用できない場合は直接試行
+                                canUseShareTargetPicker = true;
+                            }
+                        } catch (apiCheckError) {
+                            console.log('API availability check error:', apiCheckError);
+                            canUseShareTargetPicker = false;
+                        }
+                        
+                        if (canUseShareTargetPicker) {
+                            console.log('shareTargetPicker is available, attempting to use...');
+                            
+                            const result = await liff.shareTargetPicker([{
+                                type: 'text',
+                                text: shareText
+                            }]);
+                            
+                            console.log('Share result:', result);
+                            showMessage('LINEで招待を送信しました！', 'success');
+                            return;
+                        } else {
+                            console.log('shareTargetPicker not available');
+                            throw new Error('shareTargetPicker not available');
+                        }
+                        
+                    } catch (shareError) {
+                        console.error('LIFF shareTargetPicker error:', shareError);
+                        console.error('Error code:', shareError.code);
+                        console.error('Error message:', shareError.message);
+                        
+                        // shareTargetPicker固有のエラーメッセージ
+                        if (shareError.code === 'FORBIDDEN') {
+                            showMessage('共有機能の利用権限がありません', 'error');
+                            return;
+                        } else if (shareError.code === 'UNAUTHORIZED') {
+                            showMessage('認証が必要です。LINEアプリから再度アクセスしてください。', 'error');
+                            return;
+                        }
+                        
+                        // LIFF共有が失敗した場合はフォールバック
+                        console.log('Falling back due to LIFF error...');
+                    }
                 } else {
-                    // 外部ブラウザの場合はクリップボードにコピー
-                    await navigator.clipboard.writeText(shareText);
-                    showMessage('招待メッセージをコピーしました！\nLINEに貼り付けて送信してください。', 'success');
+                    console.log('LIFF conditions not met:', {
+                        isLiffAvailable,
+                        isInClient,
+                        isLoggedIn
+                    });
+                }
+                
+                // フォールバック処理
+                console.log('=== Using Fallback Methods ===');
+                
+                // LINE共有用URL生成
+                const encodedText = encodeURIComponent(shareText);
+                const lineShareUrl = `https://line.me/R/msg/text/?${encodedText}`;
+                
+                console.log('Generated LINE share URL:', lineShareUrl);
+                
+                // スマートフォンの場合はLINEアプリで開く
+                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                console.log('Is mobile device:', isMobile);
+                
+                if (isMobile) {
+                    try {
+                        console.log('Opening LINE app with URL scheme...');
+                        
+                        // モバイルでのLINE共有
+                        const linkElement = document.createElement('a');
+                        linkElement.href = lineShareUrl;
+                        linkElement.target = '_blank';
+                        linkElement.rel = 'noopener noreferrer';
+                        
+                        // 一時的にDOMに追加してクリック
+                        document.body.appendChild(linkElement);
+                        linkElement.click();
+                        document.body.removeChild(linkElement);
+                        
+                        showMessage('LINEアプリで招待を送信してください', 'success');
+                        return;
+                    } catch (linkError) {
+                        console.error('LINE link error:', linkError);
+                    }
+                }
+                
+                // デスクトップまたはモバイルリンクが失敗した場合
+                console.log('Attempting clipboard copy...');
+                
+                try {
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(shareText);
+                        showMessage('招待メッセージをコピーしました！\nLINEに貼り付けて送信してください。', 'success');
+                    } else {
+                        // クリップボードAPIが使えない場合
+                        console.log('Clipboard API not available, showing text area...');
+                        showShareTextArea(shareText);
+                    }
+                } catch (clipboardError) {
+                    console.error('Clipboard error:', clipboardError);
+                    // テキストエリアを表示してコピーを促す
+                    showShareTextArea(shareText);
                 }
                 
             } catch (error) {
-                console.error('Error sharing via LINE:', error);
-                showMessage('共有に失敗しました', 'error');
+                console.error('=== shareViaLine Error ===', error);
+                console.error('Error stack:', error.stack);
+                showMessage('共有処理中にエラーが発生しました: ' + error.message, 'error');
             }
         }
 

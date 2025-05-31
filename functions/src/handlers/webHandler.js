@@ -673,6 +673,8 @@ const generatePartnerInvite = functions
   .region('asia-northeast1')
   .https.onRequest(async (req, res) => {
     console.log('=== generatePartnerInvite called ===');
+    console.log('Method:', req.method);
+    console.log('Body:', JSON.stringify(req.body, null, 2));
     
     try {
       res.set('Access-Control-Allow-Origin', '*');
@@ -683,28 +685,48 @@ const generatePartnerInvite = functions
         return res.status(200).send('');
       }
       
+      if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+      }
+      
       let userId;
       const { userId: requestUserId, token } = req.body;
       
       // 認証処理
       if (requestUserId) {
         userId = requestUserId;
+        console.log('Using direct userId from request');
       } else if (token) {
         const tokenData = verifyToken(token);
         if (!tokenData) {
           return res.status(401).json({ error: 'Invalid token' });
         }
         userId = tokenData.userId;
+        console.log('Using userId from token');
       } else {
         return res.status(400).json({ error: 'Authentication required' });
       }
       
+      if (!userId) {
+        return res.status(400).json({ error: 'User ID is required' });
+      }
+      
+      console.log(`Generating partner invite for user: ${userId.substring(0, 8)}...`);
+      
+      // ユーザー存在確認
+      const isValid = await validateAndEnsureUser(userId);
+      if (!isValid) {
+        return res.status(400).json({ error: 'Invalid user ID' });
+      }
+      
       // 既存パートナーチェック
+      const { getPartnerId } = require('./partnerHandler');
       const existingPartnerId = await getPartnerId(userId);
       if (existingPartnerId) {
+        console.log(`User already has partner: ${existingPartnerId.substring(0, 8)}...`);
         return res.status(400).json({ 
           error: 'Partner already exists',
-          partnerId: existingPartnerId 
+          partnerId: existingPartnerId.substring(0, 8) + '...'
         });
       }
       
@@ -712,9 +734,24 @@ const generatePartnerInvite = functions
       const inviteId = generateUniqueId();
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24時間後
       
+      console.log(`Generated invite ID: ${inviteId}`);
+      
+      // 招待者の表示名取得（オプション）
+      let inviterName = 'パートナー';
+      try {
+        const userDoc = await admin.firestore().collection('users').doc(userId).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          inviterName = userData.displayName || userData.name || 'パートナー';
+        }
+      } catch (nameError) {
+        console.log('Could not get inviter name:', nameError.message);
+      }
+      
       const inviteData = {
         inviteId: inviteId,
         inviterUserId: userId,
+        inviterName: inviterName,
         status: 'pending',
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
@@ -723,16 +760,20 @@ const generatePartnerInvite = functions
       
       // Firestoreに保存
       await admin.firestore().collection('partnerInvites').doc(inviteId).set(inviteData);
+      console.log(`Partner invite saved to Firestore: ${inviteId}`);
       
       // LIFF招待URL生成
-      const PARTNER_INVITE_LIFF_ID = '2007500037-PartnerInv'; // 専用LIFF ID
-      const inviteUrl = `https://liff.line.me/${PARTNER_INVITE_LIFF_ID}?inviteId=${inviteId}`;
+      const PARTNER_LIFF_ID = '2007500037-XROaPWoj'; // パートナー管理用LIFF ID
+      const inviteUrl = `https://liff.line.me/${PARTNER_LIFF_ID}?mode=invite&inviteId=${inviteId}`;
       
       // LINE共有用URL生成
       const shareText = encodeURIComponent(`🌸 生理日共有アプリのパートナー招待\n\n💕 一緒に健康管理をしませんか？\n下のリンクをタップして承認してください！\n\n有効期限: 24時間`);
       const lineShareUrl = `https://line.me/R/msg/text/?${shareText}%0A%0A${encodeURIComponent(inviteUrl)}`;
       
-      console.log(`Partner invite generated: ${inviteId} for user: ${userId}`);
+      console.log(`Partner invite generated successfully:`);
+      console.log(`  Invite ID: ${inviteId}`);
+      console.log(`  Invite URL: ${inviteUrl}`);
+      console.log(`  Expires at: ${expiresAt.toISOString()}`);
       
       res.status(200).json({
         success: true,
@@ -744,7 +785,12 @@ const generatePartnerInvite = functions
       
     } catch (error) {
       console.error('Error in generatePartnerInvite:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('Error stack:', error.stack);
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: error.message,
+        timestamp: new Date().toISOString()
+      });
     }
   });
 

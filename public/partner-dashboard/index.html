@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>パートナーダッシュボード - 生理日共有アプリ</title>
+    <!-- LIFF SDK -->
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .header-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+        
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .content {
+            padding: 20px 16px;
+        }
+        
+        .partner-status {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #0ea5e9;
+        }
+        
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .status-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        
+        .status-details h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+        
+        .status-details p {
+            color: #64748b;
+            font-size: 14px;
+        }
+        
+        .partner-info {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .info-item {
+            text-align: center;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 12px;
+        }
+        
+        .info-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 4px;
+        }
+        
+        .info-label {
+            font-size: 12px;
+            color: #64748b;
+        }
+        
+        .timeline-section {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .timeline-item:last-child {
+            border-bottom: none;
+        }
+        
+        .timeline-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: white;
+        }
+        
+        .timeline-icon.current {
+            background: #10b981;
+        }
+        
+        .timeline-icon.upcoming {
+            background: #f59e0b;
+        }
+        
+        .timeline-icon.prediction {
+            background: #8b5cf6;
+        }
+        
+        .timeline-content {
+            flex: 1;
+        }
+        
+        .timeline-title {
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+        
+        .timeline-date {
+            color: #64748b;
+            font-size: 12px;
+        }
+        
+        .current-phase {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            border-left: 4px solid #f59e0b;
+        }
+        
+        .phase-emoji {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        
+        .phase-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 8px;
+        }
+        
+        .phase-description {
+            color: #b45309;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        .action-btn {
+            padding: 14px 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #f8fafc;
+            color: #374151;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .btn-secondary:hover {
+            background: #f1f5f9;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6b7280;
+        }
+        
+        .no-data-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        
+        .error-message {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px;
+            text-align: center;
+            font-size: 14px;
+            border: 1px solid #fecaca;
+        }
+        
+        .support-tips {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .tips-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .tip-item {
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #334155;
+            line-height: 1.4;
+        }
+        
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-title">👫 パートナーダッシュボード</div>
+            <div class="header-subtitle">パートナーの健康状況を確認</div>
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <p>データを読み込んでいます...</p>
+        </div>
+
+        <div id="content" class="content hidden">
+            <!-- メインコンテンツがここに動的挿入される -->
+        </div>
+
+        <div id="error" class="hidden">
+            <div class="error-message">
+                データの読み込みに失敗しました。<br>
+                再度お試しください。
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUserId = null;
+        let partnerData = null;
+        
+        const PARTNER_LIFF_ID = '2007500037-XROaPWoj';
+        const API_BASE_URL = 'https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net';
+
+        // メイン初期化
+        async function initializePartnerDashboard() {
+            try {
+                console.log('=== Partner Dashboard Initialization ===');
+                
+                // LIFF初期化
+                await liff.init({ 
+                    liffId: PARTNER_LIFF_ID,
+                    withLoginOnExternalBrowser: true
+                });
+                
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
+                
+                const profile = await liff.getProfile();
+                currentUserId = profile.userId;
+                
+                console.log('Partner dashboard user:', currentUserId?.substring(0, 8) + '...');
+                
+                await loadPartnerDashboardData();
+                
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showError('初期化に失敗しました。');
+            }
+        }
+
+        // パートナーダッシュボードデータ取得
+        async function loadPartnerDashboardData() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/getPartnerDashboardData`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: currentUserId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                hideLoading();
+                document.getElementById('content').classList.remove('hidden');
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'データ取得に失敗しました');
+                }
+                
+                if (data.hasPartner) {
+                    showPartnerDashboard(data);
+                } else {
+                    showNoPartnerMessage();
+                }
+                
+            } catch (error) {
+                console.error('Error loading partner dashboard:', error);
+                showError('パートナーデータの読み込みに失敗しました');
+            }
+        }
+
+        // パートナーダッシュボード表示
+        function showPartnerDashboard(data) {
+            const content = document.getElementById('content');
+            content.innerHTML = `
+                <div class="partner-status">
+                    <div class="status-header">
+                        <div class="status-icon">💕</div>
+                        <div class="status-details">
+                            <h2>パートナーと接続中</h2>
+                            <p>健康情報を共有しています</p>
+                        </div>
+                    </div>
+                </div>
+
+                ${data.partnerInfo && data.partnerInfo.hasRecords ? `
+                <div class="current-phase">
+                    <div class="phase-emoji">${data.partnerInfo.currentPhase?.emoji || '🌸'}</div>
+                    <div class="phase-title">${data.partnerInfo.currentPhase?.description || '現在の状態'}</div>
+                    <div class="phase-description">
+                        ${data.partnerInfo.currentPhase?.daysSinceStart ? 
+                          `開始から${data.partnerInfo.currentPhase.daysSinceStart + 1}日目` : 
+                          '詳細情報を確認中...'}
+                    </div>
+                </div>
+
+                <div class="partner-info">
+                    <div class="section-title">📊 周期情報</div>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-value">${data.partnerInfo.settings?.cycle || '--'}日</div>
+                            <div class="info-label">生理周期</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-value">${data.partnerInfo.settings?.period || '--'}日</div>
+                            <div class="info-label">生理期間</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="timeline-section">
+                    <div class="section-title">📅 予測タイムライン</div>
+                    ${generateTimeline(data.partnerInfo)}
+                </div>
+                ` : `
+                <div class="no-data">
+                    <div class="no-data-icon">📊</div>
+                    <h3>まだ記録がありません</h3>
+                    <p>パートナーが生理日を記録すると<br>こちらに情報が表示されます</p>
+                </div>
+                `}
+
+                <div class="support-tips">
+                    <div class="tips-title">💡 サポートのコツ</div>
+                    <div class="tip-item">• 生理中は体調に気を遣ってあげましょう</div>
+                    <div class="tip-item">• 無理をしないよう声をかけてあげてください</div>
+                    <div class="tip-item">• 好きな食べ物や温かい飲み物を用意してあげると喜ばれます</div>
+                    <div class="tip-item">• 感情の起伏があるときは優しく接してあげてください</div>
+                </div>
+
+                <div class="quick-actions">
+                    <button class="action-btn btn-primary" onclick="refreshData()">
+                        🔄 更新
+                    </button>
+                    <button class="action-btn btn-secondary" onclick="openSettings()">
+                        ⚙️ 設定
+                    </button>
+                </div>
+            `;
+        }
+
+        // タイムライン生成
+        function generateTimeline(partnerInfo) {
+            if (!partnerInfo || !partnerInfo.hasRecords) {
+                return '<p style="text-align: center; color: #6b7280;">記録データがありません</p>';
+            }
+
+            let timelineHtml = '';
+            
+            // 現在の状態
+            if (partnerInfo.currentPhase) {
+                timelineHtml += `
+                    <div class="timeline-item">
+                        <div class="timeline-icon current">${partnerInfo.currentPhase.emoji}</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">現在: ${partnerInfo.currentPhase.description}</div>
+                            <div class="timeline-date">今日</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 次回生理予測
+            if (partnerInfo.nextPeriod) {
+                const nextDate = new Date(partnerInfo.nextPeriod.nextPeriodDate);
+                const daysUntil = partnerInfo.nextPeriod.daysUntil;
+                
+                timelineHtml += `
+                    <div class="timeline-item">
+                        <div class="timeline-icon upcoming">🩸</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">次回生理予測</div>
+                            <div class="timeline-date">
+                                ${nextDate.toLocaleDateString('ja-JP')} 
+                                ${daysUntil > 0 ? `(あと${daysUntil}日)` : '(予定日を過ぎています)'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 排卵日予測
+            if (partnerInfo.ovulation && partnerInfo.ovulation.ovulationDate) {
+                const ovulationDate = new Date(partnerInfo.ovulation.ovulationDate);
+                const today = new Date();
+                const daysDiff = Math.ceil((ovulationDate - today) / (1000 * 60 * 60 * 24));
+                
+                timelineHtml += `
+                    <div class="timeline-item">
+                        <div class="timeline-icon prediction">🥚</div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">排卵日予測</div>
+                            <div class="timeline-date">
+                                ${ovulationDate.toLocaleDateString('ja-JP')}
+                                ${daysDiff > 0 ? `(あと${daysDiff}日)` : daysDiff === 0 ? '(今日)' : `(${Math.abs(daysDiff)}日前)`}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            return timelineHtml || '<p style="text-align: center; color: #6b7280;">予測情報を計算中...</p>';
+        }
+
+        // パートナー未接続メッセージ
+        function showNoPartnerMessage() {
+            const content = document.getElementById('content');
+            content.innerHTML = `
+                <div class="no-data">
+                    <div class="no-data-icon">👫</div>
+                    <h3>パートナー接続がありません</h3>
+                    <p>まだパートナーとの接続が<br>確立されていません</p>
+                </div>
+
+                <div class="support-tips">
+                    <div class="tips-title">📱 パートナー接続について</div>
+                    <div class="tip-item">• パートナーからの招待リンクをタップして接続</div>
+                    <div class="tip-item">• 接続後、パートナーの健康情報を確認できます</div>
+                    <div class="tip-item">• プライバシーは完全に保護されます</div>
+                </div>
+
+                <div class="quick-actions" style="grid-template-columns: 1fr;">
+                    <button class="action-btn btn-primary" onclick="refreshData()">
+                        🔄 接続状況を確認
+                    </button>
+                </div>
+            `;
+        }
+
+        // データ更新
+        function refreshData() {
+            document.getElementById('content').classList.add('hidden');
+            document.getElementById('loading').classList.remove('hidden');
+            loadPartnerDashboardData();
+        }
+
+        // 設定画面を開く
+        function openSettings() {
+            if (liff.isInClient()) {
+                // LINEアプリ内の場合はメッセージ送信
+                liff.sendMessages([{
+                    type: 'text',
+                    text: 'パートナー確認'
+                }]).then(() => {
+                    liff.closeWindow();
+                });
+            } else {
+                alert('LINEアプリから「パートナー確認」と送信してください');
+            }
+        }
+
+        // ユーティリティ関数
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+        }
+
+        function showError(message) {
+            hideLoading();
+            document.getElementById('error').classList.remove('hidden');
+            document.querySelector('#error .error-message').innerHTML = message;
+        }
+
+        // ページ読み込み時に初期化
+        document.addEventListener('DOMContentLoaded', initializePartnerDashboard);
+    </script>
+</body>
+</html>

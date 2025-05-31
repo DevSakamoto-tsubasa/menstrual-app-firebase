@@ -340,6 +340,160 @@
         // グローバル変数
         let currentUser = null;
         const LIFF_ID = '2007500037-w97Oo2kv';
+        const API_BASE_URL = 'https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net';
+
+        // 🔄 パートナー判定ユーティリティ関数
+        /**
+         * パートナー判定とリダイレクト処理
+         * @param {string} userId - ユーザーID
+         * @returns {boolean} - リダイレクトしたかどうか
+         */
+        async function checkAndRedirectIfPartner(userId) {
+            try {
+                console.log('🔍 Checking partner role for user:', userId?.substring(0, 8) + '...');
+                
+                const response = await fetch(`${API_BASE_URL}/getPartnerData`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ userId: userId })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('📋 Partner check result:', data);
+                    
+                    // パートナー（招待された側）かどうか判定
+                    if (data.hasPartner && data.partnership?.role === 'partner') {
+                        console.log('🔄 User is a partner, redirecting to partner dashboard...');
+                        
+                        // リダイレクト処理
+                        showPartnerRedirectMessage();
+                        
+                        // パートナー専用ダッシュボードにリダイレクト
+                        const partnerDashboardUrl = `/partner-dashboard/?userId=${encodeURIComponent(userId)}`;
+                        
+                        // 2秒後にリダイレクト
+                        setTimeout(() => {
+                            window.location.href = partnerDashboardUrl;
+                        }, 2000);
+                        
+                        return true; // リダイレクト実行
+                    } else if (data.hasPartner) {
+                        console.log('👤 User is primary user (invited the partner)');
+                    } else {
+                        console.log('🔗 User has no partner connection');
+                    }
+                } else {
+                    console.log('❌ Partner check API failed:', response.status);
+                }
+                
+                return false; // リダイレクトしない
+                
+            } catch (error) {
+                console.error('🚨 Partner check error:', error);
+                return false; // エラー時はリダイレクトしない
+            }
+        }
+
+        /**
+         * パートナーリダイレクトメッセージ表示
+         */
+        function showPartnerRedirectMessage() {
+            // ローディング要素を非表示
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) {
+                loadingElement.style.display = 'none';
+            }
+            
+            // コンテンツ要素を取得して表示
+            const contentElement = document.getElementById('content');
+            if (contentElement) {
+                contentElement.style.display = 'block';
+                contentElement.innerHTML = `
+                    <div style="
+                        background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+                        border-radius: 16px;
+                        padding: 24px;
+                        text-align: center;
+                        border-left: 4px solid #0ea5e9;
+                        max-width: 400px;
+                        margin: 0 auto;
+                    ">
+                        <div style="
+                            font-size: 32px;
+                            margin-bottom: 12px;
+                            animation: spin 2s linear infinite;
+                        ">🔄</div>
+                        <div style="
+                            font-size: 18px;
+                            font-weight: 600;
+                            color: #0c4a6e;
+                            margin-bottom: 8px;
+                        ">パートナーダッシュボードへ移動中</div>
+                        <div style="
+                            color: #0369a1;
+                            font-size: 14px;
+                        ">
+                            あなたはパートナーとして登録されています。<br>
+                            専用のダッシュボードに移動します...
+                        </div>
+                    </div>
+                    
+                    <style>
+                        @keyframes spin {
+                            0% { transform: rotate(0deg); }
+                            100% { transform: rotate(360deg); }
+                        }
+                    </style>
+                `;
+            }
+        }
+
+        /**
+         * LIFF初期化とパートナー判定を組み合わせた処理
+         */
+        async function initializeLiffWithPartnerCheck() {
+            try {
+                console.log('🚀 Initializing LIFF with partner check...');
+                
+                // LIFF初期化
+                await liff.init({ 
+                    liffId: LIFF_ID,
+                    withLoginOnExternalBrowser: true
+                });
+                
+                console.log('✅ LIFF initialized successfully');
+                
+                if (!liff.isLoggedIn()) {
+                    console.log('🔐 User not logged in, redirecting...');
+                    liff.login();
+                    return;
+                }
+                
+                // プロフィール取得
+                const profile = await liff.getProfile();
+                console.log('👤 User profile obtained:', profile.displayName);
+                
+                currentUser = profile;
+                
+                // パートナー判定チェック
+                const isRedirected = await checkAndRedirectIfPartner(profile.userId);
+                if (isRedirected) {
+                    return; // リダイレクトした場合は処理を停止
+                }
+                
+                // パートナーでない場合のメイン処理
+                console.log('📊 Loading dashboard for primary user...');
+                showUserInfo(profile);
+                await loadDashboardData(profile.userId);
+                
+            } catch (error) {
+                console.error('🚨 LIFF initialization with partner check error:', error);
+                showError('初期化に失敗しました。LINEアプリから再度アクセスしてください。');
+            }
+        }
 
         // 周期段階の計算
         function getCurrentCyclePhase(lastPeriodStart, period, cycle) {
@@ -456,7 +610,7 @@
 
         // ダッシュボードデータ表示
         function displayDashboardData(data) {
-            console.log('Dashboard data:', data);
+            console.log('📊 Displaying dashboard data:', data);
             
             if (!data.hasRecords) {
                 showNoDataMessage();
@@ -515,7 +669,7 @@
 
         // エラー表示
         function showError(message) {
-            console.error('Dashboard error:', message);
+            console.error('🚨 Dashboard error:', message);
             document.getElementById('loading').style.display = 'none';
             document.getElementById('error').style.display = 'block';
         }
@@ -532,9 +686,9 @@
         // ダッシュボードデータ取得
         async function loadDashboardData(userId) {
             try {
-                console.log('Loading dashboard data for user:', userId.substring(0, 8) + '...');
+                console.log('📊 Loading dashboard data for user:', userId.substring(0, 8) + '...');
                 
-                const apiUrl = `https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net/getDashboardData?userId=${encodeURIComponent(userId)}`;
+                const apiUrl = `${API_BASE_URL}/getDashboardData?userId=${encodeURIComponent(userId)}`;
                 
                 const response = await fetch(apiUrl);
                 
@@ -546,7 +700,7 @@
                 displayDashboardData(data);
                 
             } catch (error) {
-                console.error('Error loading dashboard data:', error);
+                console.error('🚨 Error loading dashboard data:', error);
                 showError('データの取得に失敗しました');
             }
         }
@@ -563,47 +717,14 @@
             }
         }
 
-        // LIFF初期化とデータ読み込み
-        async function initializeLiffAndLoadData() {
-            try {
-                console.log('Initializing LIFF...');
-                
-                await liff.init({ 
-                    liffId: LIFF_ID,
-                    withLoginOnExternalBrowser: true
-                });
-                
-                console.log('LIFF initialized successfully');
-                
-                if (!liff.isLoggedIn()) {
-                    console.log('User not logged in, redirecting...');
-                    liff.login();
-                    return;
-                }
-                
-                // プロフィール取得
-                const profile = await liff.getProfile();
-                console.log('User profile obtained:', profile.displayName);
-                
-                currentUser = profile;
-                showUserInfo(profile);
-                
-                // ダッシュボードデータ読み込み
-                await loadDashboardData(profile.userId);
-                
-            } catch (error) {
-                console.error('LIFF initialization error:', error);
-                showError('初期化に失敗しました');
-            }
-        }
-
         // ページ読み込み時に初期化
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Dashboard page loaded');
+            console.log('📱 Dashboard page loaded');
             
             // LIFF環境かどうかチェック
             if (typeof liff !== 'undefined') {
-                initializeLiffAndLoadData();
+                // パートナー判定付きで初期化
+                initializeLiffWithPartnerCheck();
             } else {
                 showError('LIFF SDKが読み込まれていません');
             }

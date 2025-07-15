@@ -1,497 +1,904 @@
 <!DOCTYPE html>
+
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>開始日入力 - 生理日共有アプリ</title>
-    <!-- LIFF SDK -->
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <title>生理開始日入力 | 生理日共有アプリ</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8f9ff;
-            color: #333;
-            min-height: 100vh;
-        }
-        
-        .container {
-            max-width: 400px;
-            margin: 0 auto;
-            background: white;
-            min-height: 100vh;
-        }
-        
-        .header {
-            background: white;
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        
-        .header h1 {
-            font-size: 20px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 5px;
-        }
-        
-        .header p {
-            font-size: 14px;
-            color: #666;
-        }
-        
-        .form-section {
-            padding: 30px 20px;
-        }
-        
-        .date-picker-card {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        }
-        
-        .date-picker-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 8px;
-            text-align: center;
-        }
-        
-        .date-picker-description {
-            font-size: 14px;
-            color: #6b7280;
-            margin-bottom: 20px;
-            text-align: center;
-            line-height: 1.5;
-        }
-        
-        .date-input-group {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-        
-        .date-input {
-            width: 100%;
-            max-width: 200px;
-            padding: 16px;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 16px;
-            text-align: center;
-            transition: border-color 0.3s;
-            font-weight: 500;
-        }
-        
-        .date-input:focus {
-            outline: none;
-            border-color: #7dd3fc;
+
+```
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 10px;
+    }
+
+    .container {
+        max-width: 400px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        overflow: hidden;
+        min-height: calc(100vh - 20px);
+    }
+
+    .header {
+        background: linear-gradient(135deg, #ff6b6b, #ffa8a8);
+        color: white;
+        padding: 30px 20px;
+        text-align: center;
+    }
+
+    .header h1 {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .header p {
+        font-size: 16px;
+        opacity: 0.9;
+    }
+
+    .user-info {
+        background: rgba(255, 255, 255, 0.2);
+        margin: 15px -20px 0;
+        padding: 10px 20px;
+        font-size: 14px;
+        text-align: center;
+        border-radius: 10px;
+    }
+
+    .form-section {
+        padding: 30px 20px;
+    }
+
+    .info-card {
+        background: #f8f9ff;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 25px;
+        border-left: 4px solid #667eea;
+    }
+
+    .info-card-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+    }
+
+    .info-card-text {
+        font-size: 14px;
+        color: #666;
+        line-height: 1.5;
+    }
+
+    .date-picker-card {
+        background: white;
+        border: 2px solid #e1e5f2;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 25px;
+    }
+
+    .date-picker-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 5px;
+    }
+
+    .date-picker-description {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 15px;
+    }
+
+    .date-input-group {
+        margin-bottom: 15px;
+    }
+
+    .date-input {
+        width: 100%;
+        padding: 15px;
+        border: 2px solid #e1e5f2;
+        border-radius: 10px;
+        font-size: 16px;
+        background: #f8f9ff;
+        color: #333;
+    }
+
+    .date-input:focus {
+        outline: none;
+        border-color: #667eea;
+        background: white;
+    }
+
+    .quick-date-options {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .quick-date-btn {
+        padding: 12px;
+        border: 2px solid #e1e5f2;
+        border-radius: 10px;
+        background: white;
+        color: #333;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .quick-date-btn:hover {
+        border-color: #667eea;
+        background: #f8f9ff;
+    }
+
+    .quick-date-btn.active {
+        border-color: #667eea;
+        background: #667eea;
+        color: white;
+    }
+
+    .period-duration-card {
+        background: white;
+        border: 2px solid #e1e5f2;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 25px;
+    }
+
+    .duration-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 15px;
+    }
+
+    .duration-options {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+    }
+
+    .duration-btn {
+        padding: 12px 8px;
+        border: 2px solid #e1e5f2;
+        border-radius: 8px;
+        background: white;
+        color: #333;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .duration-btn:hover {
+        border-color: #ff6b6b;
+        background: #ffeaea;
+    }
+
+    .duration-btn.active {
+        border-color: #ff6b6b;
+        background: #ff6b6b;
+        color: white;
+    }
+
+    .error-message {
+        background: #ffe6e6;
+        border: 2px solid #ff9999;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 15px 0;
+        color: #d63384;
+        font-size: 14px;
+        display: none;
+    }
+
+    .btn-primary {
+        width: 100%;
+        padding: 18px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 15px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    .btn-primary:active {
+        transform: translateY(0);
+    }
+
+    .loading {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 20px;
+        min-height: 300px;
+    }
+
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .loading p {
+        color: #666;
+        font-size: 16px;
+        text-align: center;
+    }
+
+    .success-message {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 20px;
+        text-align: center;
+        min-height: 300px;
+    }
+
+    .success-icon {
+        font-size: 60px;
+        margin-bottom: 20px;
+    }
+
+    .success-message h2 {
+        color: #333;
+        font-size: 24px;
+        margin-bottom: 10px;
+    }
+
+    .success-message p {
+        color: #666;
+        font-size: 16px;
+        margin-bottom: 20px;
+    }
+
+    .update-info {
+        background: #f0f7ff;
+        border: 2px solid #b3d9ff;
+        border-radius: 10px;
+        padding: 15px;
+        margin-top: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .update-icon {
+        font-size: 20px;
+    }
+
+    .update-info p {
+        margin: 0;
+        font-size: 14px;
+        color: #0066cc;
+    }
+
+    .update-complete {
+        background: #f0fff4;
+        border-color: #90ee90;
+    }
+
+    .update-complete p {
+        color: #228b22;
+    }
+
+    .debug-panel {
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        font-size: 12px;
+        display: none;
+    }
+
+    @media (max-width: 480px) {
+        .duration-options {
+            grid-template-columns: repeat(3, 1fr);
         }
         
         .quick-date-options {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        
-        .quick-date-btn {
-            padding: 12px;
-            background: #f8fafc;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 500;
-            color: #374151;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .quick-date-btn:hover {
-            background: #e0f2fe;
-            border-color: #7dd3fc;
-        }
-        
-        .quick-date-btn.active {
-            background: #7dd3fc;
-            border-color: #0284c7;
-            color: white;
-        }
-        
-        .period-duration-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        }
-        
-        .duration-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 12px;
-            text-align: center;
-        }
-        
-        .duration-options {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: 1fr;
             gap: 8px;
         }
-        
-        .duration-btn {
-            aspect-ratio: 1;
-            background: #f8fafc;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            color: #374151;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .duration-btn:hover {
-            background: #e0f2fe;
-            border-color: #7dd3fc;
-        }
-        
-        .duration-btn.active {
-            background: #7dd3fc;
-            border-color: #0284c7;
-            color: white;
-        }
-        
-        .btn-primary {
-            width: 100%;
-            padding: 16px;
-            background: #7dd3fc;
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-            margin-top: 20px;
-        }
-        
-        .btn-primary:hover {
-            background: #0284c7;
-        }
-        
-        .btn-primary:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 40px;
-        }
-        
-        .loading-spinner {
-            width: 32px;
-            height: 32px;
-            border: 3px solid #f3f4f6;
-            border-top: 3px solid #7dd3fc;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 16px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .success-message {
-            display: none;
-            text-align: center;
-            padding: 40px 20px;
-        }
-        
-        .success-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
-        }
-        
-        .error-message {
-            display: none;
-            background: #fef2f2;
-            color: #dc2626;
-            padding: 16px;
-            border-radius: 12px;
-            margin: 16px 0;
-            text-align: center;
-            font-size: 14px;
-            border: 1px solid #fecaca;
-        }
-        
-        .info-card {
-            background: #f0f9ff;
-            border: 1px solid #bae6fd;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 20px;
-        }
-        
-        .info-card-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #0369a1;
-            margin-bottom: 8px;
-        }
-        
-        .info-card-text {
-            font-size: 13px;
-            color: #0284c7;
-            line-height: 1.4;
-        }
-    </style>
+    }
+</style>
+```
+
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌸 開始日入力</h1>
-            <p>生理開始日を記録してください</p>
+            <h1>🌸 生理開始日入力</h1>
+            <p>正確な記録で精度の高い予測を</p>
+            <div id="userInfo" class="user-info" style="display: none;">
+                <!-- ユーザー情報 -->
+            </div>
+        </div>
+
+```
+    <div id="entryForm" class="form-section">
+        <div class="info-card">
+            <div class="info-card-title">📝 記録について</div>
+            <div class="info-card-text">生理開始日を正確に記録することで、より精度の高い予測ができるようになります。</div>
         </div>
         
-        <div id="entryForm" class="form-section">
-            <div class="info-card">
-                <div class="info-card-title">📝 記録について</div>
-                <div class="info-card-text">生理開始日を正確に記録することで、より精度の高い予測ができるようになります。</div>
+        <div class="date-picker-card">
+            <div class="date-picker-title">🗓️ 生理開始日</div>
+            <div class="date-picker-description">いつから生理が始まりましたか？</div>
+            
+            <div class="date-input-group">
+                <input type="date" id="startDateInput" class="date-input">
             </div>
             
-            <div class="date-picker-card">
-                <div class="date-picker-title">🗓️ 生理開始日</div>
-                <div class="date-picker-description">いつから生理が始まりましたか？</div>
+            <div class="quick-date-options">
+                <button class="quick-date-btn" onclick="setQuickDate(0)">今日</button>
+                <button class="quick-date-btn" onclick="setQuickDate(1)">昨日</button>
+                <button class="quick-date-btn" onclick="setQuickDate(2)">一昨日</button>
+                <button class="quick-date-btn" onclick="setQuickDate(3)">3日前</button>
+            </div>
+        </div>
+        
+        <div class="period-duration-card">
+            <div class="duration-title">⏱️ 生理期間（予想）</div>
+            <div class="duration-options">
+                <button class="duration-btn" onclick="setDuration(3)">3日</button>
+                <button class="duration-btn" onclick="setDuration(4)">4日</button>
+                <button class="duration-btn active" onclick="setDuration(5)">5日</button>
+                <button class="duration-btn" onclick="setDuration(6)">6日</button>
+                <button class="duration-btn" onclick="setDuration(7)">7日</button>
+                <button class="duration-btn" onclick="setDuration(8)">8日</button>
+                <button class="duration-btn" onclick="setDuration(9)">9日</button>
+                <button class="duration-btn" onclick="setDuration(10)">10日</button>
+            </div>
+        </div>
+        
+        <div class="error-message" id="errorMessage">
+            <!-- エラーメッセージ -->
+        </div>
+        
+        <button type="button" class="btn-primary" onclick="savePeriodStart()">
+            記録を保存する
+        </button>
+    </div>
+    
+    <div id="loading" class="loading">
+        <div class="loading-spinner"></div>
+        <p>記録を保存しています...</p>
+    </div>
+    
+    <div id="success" class="success-message">
+        <div class="success-icon">✅</div>
+        <h2>記録完了！</h2>
+        <p>生理開始日が記録されました</p>
+    </div>
+</div>
+
+<div id="debugPanel" class="debug-panel">
+    Debug: Ready
+</div>
+
+<script>
+    // グローバル変数
+    let currentUser = null;
+    let selectedDuration = 5; // デフォルト5日
+    const DATE_ENTRY_LIFF_ID = '2007500037-vdpkmNwL'; // 開始日入力専用LIFF ID
+    
+    // 今日の日付をデフォルトに設定
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date();
+        const todayString = today.toISOString().split('T')[0];
+        document.getElementById('startDateInput').value = todayString;
+    });
+    
+    // エラーメッセージ表示
+    function showError(message) {
+        const errorDiv = document.getElementById('errorMessage');
+        errorDiv.innerHTML = message;
+        errorDiv.style.display = 'block';
+    }
+    
+    // エラーメッセージ非表示
+    function hideError() {
+        const errorDiv = document.getElementById('errorMessage');
+        errorDiv.style.display = 'none';
+    }
+
+    // ユーザー情報表示
+    function showUserInfo(profile) {
+        const userInfoDiv = document.getElementById('userInfo');
+        userInfoDiv.innerHTML = `
+            👤 ${profile.displayName} さん
+        `;
+        userInfoDiv.style.display = 'block';
+    }
+
+    // クイック日付設定
+    function setQuickDate(daysAgo) {
+        const date = new Date();
+        date.setDate(date.getDate() - daysAgo);
+        const dateString = date.toISOString().split('T')[0];
+        document.getElementById('startDateInput').value = dateString;
+        
+        // アクティブ状態の更新
+        document.querySelectorAll('.quick-date-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+
+    // 期間設定
+    function setDuration(days) {
+        selectedDuration = days;
+        
+        // アクティブ状態の更新
+        document.querySelectorAll('.duration-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+
+    // 🚀 生理開始日保存（リアルタイム更新対応版）
+    window.savePeriodStart = async function() {
+        console.log('=== savePeriodStart called (REALTIME UPDATE VERSION) ===');
+        
+        hideError();
+        
+        const startDate = document.getElementById('startDateInput').value;
+        
+        if (!startDate) {
+            showError('開始日を選択してください');
+            return;
+        }
+        
+        // 未来の日付チェック
+        const selectedDate = new Date(startDate);
+        const today = new Date();
+        today.setHours(23, 59, 59, 999); // 今日の終わりまで許可
+        
+        if (selectedDate > today) {
+            showError('未来の日付は選択できません');
+            return;
+        }
+        
+        // 3ヶ月以上前のチェック
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+        
+        if (selectedDate < threeMonthsAgo) {
+            showError('3ヶ月以上前の日付は選択できません');
+            return;
+        }
+
+        if (!currentUser) {
+            showError('ユーザー情報の取得に失敗しました。ページを再読み込みしてください。');
+            return;
+        }
+
+        // ローディング表示
+        document.getElementById('entryForm').style.display = 'none';
+        document.getElementById('loading').style.display = 'flex';
+
+        try {
+            // 終了日計算
+            const endDate = new Date(selectedDate);
+            endDate.setDate(selectedDate.getDate() + selectedDuration - 1);
+            
+            const requestData = {
+                userId: currentUser.userId,
+                startDate: startDate,
+                endDate: endDate.toISOString().split('T')[0],
+                duration: selectedDuration
+            };
+            
+            console.log('🚀 Request data:', JSON.stringify(requestData, null, 2));
+            updateDebug('Sending request...');
+            
+            // 記録保存API呼び出し
+            const response = await fetch('https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net/savePeriodRecord', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            });
+
+            console.log('📡 Response status:', response.status);
+            updateDebug(`Response: ${response.status}`);
+
+            if (response.ok) {
+                const responseData = await response.json();
+                console.log('✅ Response data:', JSON.stringify(responseData, null, 2));
+
+                // 🚀 修正1: 保存成功後にカレンダー更新をトリガー
+                console.log('🔄 Triggering calendar updates...');
+                updateDebug('Updating calendars...');
                 
-                <div class="date-input-group">
-                    <input type="date" id="startDateInput" class="date-input">
-                </div>
+                try {
+                    // 🌍 全てのカレンダーウィンドウに更新を通知
+                    await notifyCalendarUpdate(currentUser.userId);
+                    console.log('✅ Calendar update notification sent');
+                    updateDebug('Calendar update sent');
+                } catch (updateError) {
+                    console.error('❌ Calendar update notification failed:', updateError);
+                    updateDebug('Update notification failed');
+                    // カレンダー更新エラーは成功表示には影響しない
+                }
+
+                // 🚀 修正2: 成功表示を改善
+                showSuccessWithCalendarUpdate();
+
+                // 🚀 修正3: 3秒後にLINEアプリに戻る（カレンダー更新時間を確保）
+                setTimeout(() => {
+                    updateDebug('Closing window...');
+                    if (liff.isInClient()) {
+                        liff.closeWindow();
+                    } else {
+                        // 🚀 修正4: ブラウザの場合はカレンダーページにリダイレクト
+                        const calendarUrl = `/calendar/?userId=${encodeURIComponent(currentUser.userId)}&updated=${Date.now()}`;
+                        window.location.href = calendarUrl;
+                    }
+                }, 3000);
+
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `HTTP ${response.status}: サーバーエラーが発生しました`);
+            }
+
+        } catch (error) {
+            console.error('❌ Error saving period record:', error);
+            updateDebug(`Error: ${error.message}`);
+            
+            showError(`記録の保存に失敗しました: ${error.message}`);
+            
+            // フォームに戻る
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('entryForm').style.display = 'block';
+        }
+    };
+
+    // 🚀 新機能: カレンダー更新通知
+    async function notifyCalendarUpdate(userId) {
+        console.log('🔄 Starting calendar update notification process...');
+        
+        try {
+            // 🌍 方法1: localStorage を使用して他のタブに通知
+            if (typeof Storage !== 'undefined') {
+                const updateEvent = {
+                    type: 'period_record_saved',
+                    userId: userId,
+                    timestamp: Date.now(),
+                    source: 'date_entry'
+                };
                 
-                <div class="quick-date-options">
-                    <button class="quick-date-btn" onclick="setQuickDate(0)">今日</button>
-                    <button class="quick-date-btn" onclick="setQuickDate(1)">昨日</button>
-                    <button class="quick-date-btn" onclick="setQuickDate(2)">一昨日</button>
-                    <button class="quick-date-btn" onclick="setQuickDate(3)">3日前</button>
-                </div>
-            </div>
+                localStorage.setItem('calendar_update_event', JSON.stringify(updateEvent));
+                console.log('📢 LocalStorage update event set');
+                
+                // 即座に削除して一意性を保つ
+                setTimeout(() => {
+                    localStorage.removeItem('calendar_update_event');
+                }, 1000);
+            }
             
-            <div class="period-duration-card">
-                <div class="duration-title">⏱️ 生理期間（予想）</div>
-                <div class="duration-options">
-                    <button class="duration-btn" onclick="setDuration(3)">3日</button>
-                    <button class="duration-btn" onclick="setDuration(4)">4日</button>
-                    <button class="duration-btn active" onclick="setDuration(5)">5日</button>
-                    <button class="duration-btn" onclick="setDuration(6)">6日</button>
-                    <button class="duration-btn" onclick="setDuration(7)">7日</button>
-                    <button class="duration-btn" onclick="setDuration(8)">8日</button>
-                    <button class="duration-btn" onclick="setDuration(9)">9日</button>
-                    <button class="duration-btn" onclick="setDuration(10)">10日</button>
-                </div>
-            </div>
+            // 🌍 方法2: PostMessage を使用してウィンドウ間通信
+            if (window.opener) {
+                window.opener.postMessage({
+                    type: 'period_record_saved',
+                    userId: userId,
+                    timestamp: Date.now(),
+                    source: 'date_entry'
+                }, '*');
+                console.log('📢 PostMessage sent to opener window');
+            }
             
-            <div class="error-message" id="errorMessage">
-                <!-- エラーメッセージ -->
-            </div>
+            // 🌍 方法3: 強制的にカレンダーデータを更新
+            const calendarUpdateUrl = `https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net/getCalendarData?userId=${encodeURIComponent(userId)}&forceUpdate=true&timestamp=${Date.now()}`;
             
-            <button type="button" class="btn-primary" onclick="savePeriodStart()">
-                記録を保存する
-            </button>
-        </div>
+            const updateResponse = await fetch(calendarUpdateUrl, {
+                method: 'GET',
+                headers: {
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                }
+            });
+            
+            if (updateResponse.ok) {
+                console.log('✅ Calendar data force updated');
+            } else {
+                console.warn('⚠️ Calendar data force update failed');
+            }
+            
+            // 🌍 方法4: ブラウザの場合、カレンダーページを事前に準備
+            if (!liff.isInClient()) {
+                const calendarUrl = `/calendar/?userId=${encodeURIComponent(userId)}&updated=${Date.now()}`;
+                
+                // プリフェッチでカレンダーデータを準備
+                const prefetchLink = document.createElement('link');
+                prefetchLink.rel = 'prefetch';
+                prefetchLink.href = calendarUrl;
+                document.head.appendChild(prefetchLink);
+                
+                console.log('🔗 Calendar page prefetched');
+            }
+            
+        } catch (error) {
+            console.error('❌ Calendar update notification error:', error);
+            throw error;
+        }
+    }
+
+    // 🚀 新機能: 成功表示の改善
+    function showSuccessWithCalendarUpdate() {
+        const successDiv = document.getElementById('success');
+        const loadingDiv = document.getElementById('loading');
         
-        <div id="loading" class="loading">
-            <div class="loading-spinner"></div>
-            <p>記録を保存しています...</p>
-        </div>
-        
-        <div id="success" class="success-message">
+        // 成功表示を更新
+        successDiv.innerHTML = `
             <div class="success-icon">✅</div>
             <h2>記録完了！</h2>
             <p>生理開始日が記録されました</p>
-        </div>
-    </div>
-
-    <script>
-        // グローバル変数
-        let currentUser = null;
-        let selectedDuration = 5; // デフォルト5日
-        const DATE_ENTRY_LIFF_ID = '2007500037-vdpkmNwL'; // 開始日入力専用LIFF ID
+            <div class="update-info">
+                <div class="update-icon">🔄</div>
+                <p>カレンダーを更新しています...</p>
+            </div>
+        `;
         
-        // 今日の日付をデフォルトに設定
-        document.addEventListener('DOMContentLoaded', function() {
-            const today = new Date();
-            const todayString = today.toISOString().split('T')[0];
-            document.getElementById('startDateInput').value = todayString;
-        });
+        loadingDiv.style.display = 'none';
+        successDiv.style.display = 'flex';
         
-        // エラーメッセージ表示
-        function showError(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            errorDiv.innerHTML = message;
-            errorDiv.style.display = 'block';
-        }
-        
-        // エラーメッセージ非表示
-        function hideError() {
-            const errorDiv = document.getElementById('errorMessage');
-            errorDiv.style.display = 'none';
-        }
-
-        // クイック日付設定
-        function setQuickDate(daysAgo) {
-            const date = new Date();
-            date.setDate(date.getDate() - daysAgo);
-            const dateString = date.toISOString().split('T')[0];
-            document.getElementById('startDateInput').value = dateString;
-            
-            // アクティブ状態の更新
-            document.querySelectorAll('.quick-date-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-        }
-
-        // 期間設定
-        function setDuration(days) {
-            selectedDuration = days;
-            
-            // アクティブ状態の更新
-            document.querySelectorAll('.duration-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-        }
-
-        // 生理開始日保存
-        window.savePeriodStart = async function() {
-            hideError();
-            
-            const startDate = document.getElementById('startDateInput').value;
-            
-            if (!startDate) {
-                showError('開始日を選択してください');
-                return;
+        // 2秒後に更新完了表示
+        setTimeout(() => {
+            const updateInfo = successDiv.querySelector('.update-info');
+            if (updateInfo) {
+                updateInfo.className = 'update-info update-complete';
+                updateInfo.innerHTML = `
+                    <div class="update-icon">✅</div>
+                    <p>カレンダーが更新されました</p>
+                `;
             }
-            
-            // 未来の日付チェック
-            const selectedDate = new Date(startDate);
-            const today = new Date();
-            today.setHours(23, 59, 59, 999); // 今日の終わりまで許可
-            
-            if (selectedDate > today) {
-                showError('未来の日付は選択できません');
-                return;
-            }
-            
-            // 3ヶ月以上前のチェック
-            const threeMonthsAgo = new Date();
-            threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-            
-            if (selectedDate < threeMonthsAgo) {
-                showError('3ヶ月以上前の日付は選択できません');
-                return;
-            }
+        }, 2000);
+    }
 
-            if (!currentUser) {
-                showError('ユーザー情報の取得に失敗しました。ページを再読み込みしてください。');
-                return;
-            }
-
-            // ローディング表示
-            document.getElementById('entryForm').style.display = 'none';
-            document.getElementById('loading').style.display = 'block';
-
+    // 🚀 新機能: 他のページからの更新イベントをリッスン
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'calendar_update_event') {
+            console.log('📢 Calendar update event received from storage');
+            updateDebug('Storage event received');
+            
             try {
-                // 終了日計算
-                const endDate = new Date(selectedDate);
-                endDate.setDate(selectedDate.getDate() + selectedDuration - 1);
-                
-                const requestData = {
-                    userId: currentUser.userId,
-                    startDate: startDate,
-                    endDate: endDate.toISOString().split('T')[0],
-                    duration: selectedDuration
-                };
-                
-                const response = await fetch('https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net/savePeriodRecord', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(requestData)
-                });
-
-                if (response.ok) {
-                    const responseData = await response.json();
-
-                    // 成功表示
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('success').style.display = 'block';
-
-                    // 2秒後にLINEアプリに戻る
-                    setTimeout(() => {
-                        if (liff.isInClient()) {
-                            liff.closeWindow();
-                        } else {
-                            window.close();
-                        }
-                    }, 2000);
-                } else {
-                    throw new Error(`HTTP ${response.status}: サーバーエラーが発生しました`);
+                const eventData = JSON.parse(e.newValue);
+                if (eventData && eventData.type === 'period_record_saved') {
+                    console.log('🔄 Processing calendar update event...');
+                    
+                    // カレンダー更新処理があれば実行
+                    if (typeof window.updateCalendarAfterSave === 'function') {
+                        window.updateCalendarAfterSave();
+                    }
                 }
-
             } catch (error) {
-                showError(`記録の保存に失敗しました: ${error.message}`);
-                
-                // フォームに戻る
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('entryForm').style.display = 'block';
-            }
-        };
-
-        // LIFF初期化とユーザー情報取得
-        async function initializeLiffAndLoadUser() {
-            try {
-                await liff.init({ 
-                    liffId: DATE_ENTRY_LIFF_ID,
-                    withLoginOnExternalBrowser: true
-                });
-                
-                if (!liff.isLoggedIn()) {
-                    liff.login();
-                    return;
-                }
-                
-                // プロフィール取得
-                const profile = await liff.getProfile();
-                currentUser = profile;
-                
-            } catch (error) {
-                showError('初期化に失敗しました。LINEから正しくアクセスしてください。');
+                console.error('❌ Error processing calendar update event:', error);
             }
         }
+    });
 
-        // ページ読み込み時に初期化
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof liff !== 'undefined') {
-                initializeLiffAndLoadUser();
-            } else {
-                showError('LIFF SDKが読み込まれていません');
+    // 🚀 新機能: PostMessage リスナー
+    window.addEventListener('message', function(e) {
+        if (e.data && e.data.type === 'period_record_saved') {
+            console.log('📢 Calendar update event received from PostMessage');
+            updateDebug('PostMessage received');
+            
+            // カレンダー更新処理があれば実行
+            if (typeof window.updateCalendarAfterSave === 'function') {
+                window.updateCalendarAfterSave();
             }
-        });
-    </script>
+        }
+    });
+
+    // 🚀 新機能: ページ離脱時に最終更新を実行
+    window.addEventListener('beforeunload', function() {
+        if (typeof window.updateCalendarAfterSave === 'function') {
+            window.updateCalendarAfterSave();
+        }
+    });
+
+    // 🚀 デバッグ機能
+    function updateDebug(message) {
+        const debugPanel = document.getElementById('debugPanel');
+        debugPanel.textContent = `Debug: ${message}`;
+        debugPanel.style.display = 'block';
+    }
+
+    // 🚀 デバッグ機能: 手動でカレンダー更新をテスト
+    window.testCalendarUpdate = function() {
+        console.log('🧪 Testing calendar update...');
+        updateDebug('Testing update...');
+        
+        if (currentUser && currentUser.userId) {
+            notifyCalendarUpdate(currentUser.userId)
+                .then(() => {
+                    console.log('✅ Calendar update test completed');
+                    updateDebug('Test completed');
+                    alert('カレンダー更新テスト完了！');
+                })
+                .catch(error => {
+                    console.error('❌ Calendar update test failed:', error);
+                    updateDebug('Test failed');
+                    alert('カレンダー更新テスト失敗: ' + error.message);
+                });
+        } else {
+            alert('ユーザー情報が見つかりません');
+        }
+    };
+
+    // LIFF初期化とユーザー情報取得
+    async function initializeLiffAndLoadUser() {
+        try {
+            console.log('Initializing LIFF...');
+            updateDebug('Initializing LIFF...');
+            
+            await liff.init({ 
+                liffId: DATE_ENTRY_LIFF_ID,
+                withLoginOnExternalBrowser: true
+            });
+            
+            console.log('LIFF initialized successfully');
+            updateDebug('LIFF initialized');
+            
+            if (!liff.isLoggedIn()) {
+                console.log('User not logged in, redirecting...');
+                updateDebug('Login required');
+                liff.login();
+                return;
+            }
+            
+            // プロフィール取得
+            const profile = await liff.getProfile();
+            console.log('User profile obtained:', profile.displayName);
+            updateDebug(`User: ${profile.displayName}`);
+            
+            currentUser = profile;
+            showUserInfo(profile);
+            
+        } catch (error) {
+            console.error('LIFF initialization error:', error);
+            updateDebug(`LIFF Error: ${error.message}`);
+            showError('初期化に失敗しました。LINEから正しくアクセスしてください。');
+        }
+    }
+
+    // ページ読み込み時に初期化
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Date entry page loaded');
+        updateDebug('Page loaded');
+        
+        if (typeof liff !== 'undefined') {
+            initializeLiffAndLoadUser();
+        } else {
+            updateDebug('LIFF SDK not loaded');
+            showError('LIFF SDKが読み込まれていません');
+        }
+    });
+
+    // 🚀 開発用: デバッグコンソール表示切り替え
+    let debugMode = false;
+    window.toggleDebug = function() {
+        debugMode = !debugMode;
+        const debugPanel = document.getElementById('debugPanel');
+        debugPanel.style.display = debugMode ? 'block' : 'none';
+        console.log('Debug mode:', debugMode ? 'ON' : 'OFF');
+    };
+
+    // 🚀 開発用: デバッグ情報表示
+    window.showDebugInfo = function() {
+        console.log('=== DEBUG INFO ===');
+        console.log('Current User:', currentUser);
+        console.log('Selected Duration:', selectedDuration);
+        console.log('LIFF in Client:', liff.isInClient());
+        console.log('LIFF Logged In:', liff.isLoggedIn());
+        console.log('Page URL:', window.location.href);
+        console.log('Local Storage:', localStorage.getItem('calendar_update_event'));
+        console.log('==================');
+    };
+
+    // 🚀 グローバルアクセス用の関数エクスポート
+    window.entryPageFunctions = {
+        savePeriodStart: window.savePeriodStart,
+        testCalendarUpdate: window.testCalendarUpdate,
+        toggleDebug: window.toggleDebug,
+        showDebugInfo: window.showDebugInfo,
+        notifyCalendarUpdate: notifyCalendarUpdate,
+        currentUser: () => currentUser,
+        selectedDuration: () => selectedDuration
+    };
+
+    // 🚀 エラーハンドリング: グローバルエラーキャッチ
+    window.addEventListener('error', function(e) {
+        console.error('Global error caught:', e.error);
+        updateDebug(`Global Error: ${e.error?.message || 'Unknown error'}`);
+        
+        if (e.error?.message?.includes('LIFF')) {
+            showError('LIFF関連のエラーが発生しました。LINEから正しくアクセスしてください。');
+        }
+    });
+
+    // 🚀 Promise rejection のキャッチ
+    window.addEventListener('unhandledrejection', function(e) {
+        console.error('Unhandled promise rejection:', e.reason);
+        updateDebug(`Promise Error: ${e.reason?.message || 'Unknown promise error'}`);
+        
+        if (e.reason?.message?.includes('fetch')) {
+            showError('ネットワークエラーが発生しました。接続を確認してください。');
+        }
+    });
+
+    // 🚀 ページ表示時の自動チェック
+    window.addEventListener('pageshow', function(e) {
+        if (e.persisted) {
+            console.log('Page restored from cache');
+            updateDebug('Page restored from cache');
+            
+            // キャッシュから復元された場合、データを再確認
+            if (currentUser) {
+                updateDebug(`User restored: ${currentUser.displayName}`);
+            }
+        }
+    });
+
+    // 🚀 ネットワーク状態監視
+    window.addEventListener('online', function() {
+        console.log('Network: Online');
+        updateDebug('Network: Online');
+    });
+
+    window.addEventListener('offline', function() {
+        console.log('Network: Offline');
+        updateDebug('Network: Offline');
+        showError('ネットワークに接続されていません。接続を確認してください。');
+    });
+
+    // 🚀 開発用: コンソールからの簡単アクセス
+    console.log('🚀 Entry Page Functions Available:');
+    console.log('- window.testCalendarUpdate() - カレンダー更新テスト');
+    console.log('- window.toggleDebug() - デバッグパネル表示切り替え');
+    console.log('- window.showDebugInfo() - デバッグ情報表示');
+    console.log('- window.entryPageFunctions - 全機能アクセス');
+
+</script>
+```
+
 </body>
 </html>

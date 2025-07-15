@@ -774,70 +774,111 @@
             return monthDiv;
         }
 
-        // カレンダー日付をマーキング（自分とパートナーの生理を表示）
+        // 🚀 カレンダー日付をマーキング（優先順位完全修正版）
         function markCalendarDay(dayElement, date) {
-            // 日付のみで比較するための関数
-            function isSameDate(date1, date2) {
-                const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
-                const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
-                return d1.getTime() === d2.getTime();
-            }
+            if (!userData || !userData.settings) return;
             
-            function isDateInRange(checkDate, startDate, endDate) {
-                const check = new Date(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate());
-                const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-                const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
-                return check >= start && check <= end;
-            }
+            console.log(`🎯 Marking date: ${date.toDateString()}`);
             
-            // 自分の生理記録をチェック
-            if (userData && userData.records) {
+            // ⭐ 優先順位1: 実際の生理記録（最優先）
+            if (userData.records && userData.records.length > 0) {
+                console.log(`🔍 Checking ${userData.records.length} actual records`);
+                
                 for (const record of userData.records) {
                     const startDate = new Date(record.startDate);
                     const endDate = record.endDate ? new Date(record.endDate) : null;
                     
-                    if (endDate) {
-                        if (isDateInRange(date, startDate, endDate)) {
-                            dayElement.classList.add('period');
-                            return;
-                        }
-                    } else {
-                        if (isSameDate(date, startDate)) {
-                            dayElement.classList.add('period');
-                            return;
-                        }
-                    }
-                }
-            }
-            
-            // パートナーの生理記録をチェック
-            if (partnerData && partnerData.records) {
-                for (const record of partnerData.records) {
-                    const startDate = new Date(record.startDate);
-                    const endDate = record.endDate ? new Date(record.endDate) : null;
+                    // 実際の生理期間中
+                    if (endDate && date >= startDate && date <= endDate) {
+                        console.log(`✅ Found actual period record: ${startDate.toDateString()} - ${endDate.toDateString()}`);
+                        dayElement.classList.add('period');
+                        dayElement.setAttribute('data-type', 'actual-period');
+                        dayElement.setAttribute('data-priority', '1');
+                        return; // 🚀 実際の記録が見つかったら即座に終了
+                    } 
                     
-                    if (endDate) {
-                        if (isDateInRange(date, startDate, endDate)) {
-                            dayElement.classList.add('partner-period');
-                            return;
-                        }
-                    } else {
-                        if (isSameDate(date, startDate)) {
-                            dayElement.classList.add('partner-period');
-                            return;
-                        }
+                    // 実際の生理開始日のみ（終了日未設定）
+                    if (!endDate && date.toDateString() === startDate.toDateString()) {
+                        console.log(`✅ Found actual period start: ${startDate.toDateString()}`);
+                        dayElement.classList.add('period');
+                        dayElement.setAttribute('data-type', 'actual-period-start');
+                        dayElement.setAttribute('data-priority', '1');
+                        return; // 🚀 実際の記録が見つかったら即座に終了
                     }
                 }
             }
             
-            // 自分の予測生理をチェック
-            if (userData && userData.records && userData.records.length > 0 && userData.settings) {
+            // 🚀 ここに到達するのは実際の記録がない場合のみ
+            console.log(`🔮 No actual records found, checking predictions`);
+            
+            // ⭐ 優先順位2: API予測データ（webHandler.jsから取得）
+            if (userData.predictions && userData.predictions.futurePredictions) {
+                console.log(`🔍 Checking API future predictions (${userData.predictions.futurePredictions.length} cycles)`);
+                
+                for (const prediction of userData.predictions.futurePredictions) {
+                    const predictedStart = new Date(prediction.period.startDate);
+                    const predictedEnd = new Date(prediction.period.endDate);
+                    const predictedOvulation = new Date(prediction.ovulation.date);
+                    
+                    // 予測生理期間
+                    if (date >= predictedStart && date <= predictedEnd) {
+                        console.log(`✅ Found API predicted period: ${predictedStart.toDateString()} - ${predictedEnd.toDateString()}`);
+                        dayElement.classList.add('predicted-period');
+                        dayElement.setAttribute('data-type', 'api-predicted-period');
+                        dayElement.setAttribute('data-priority', '2');
+                        dayElement.setAttribute('data-cycle', prediction.cycle);
+                        return; // 🚀 予測が見つかったら即座に終了
+                    }
+                    
+                    // 予測排卵日
+                    if (date.toDateString() === predictedOvulation.toDateString()) {
+                        console.log(`✅ Found API predicted ovulation: ${predictedOvulation.toDateString()}`);
+                        dayElement.classList.add('predicted-ovulation');
+                        dayElement.setAttribute('data-type', 'api-predicted-ovulation');
+                        dayElement.setAttribute('data-priority', '2');
+                        dayElement.setAttribute('data-cycle', prediction.cycle);
+                        return; // 🚀 予測が見つかったら即座に終了
+                    }
+                }
+            }
+            
+            // ⭐ 優先順位3: 次回生理予測（APIから）
+            if (userData.predictions && userData.predictions.nextPeriod) {
+                const nextStart = new Date(userData.predictions.nextPeriod.startDate);
+                const nextEnd = new Date(userData.predictions.nextPeriod.endDate);
+                
+                if (date >= nextStart && date <= nextEnd) {
+                    console.log(`✅ Found API next period prediction: ${nextStart.toDateString()} - ${nextEnd.toDateString()}`);
+                    dayElement.classList.add('predicted-period');
+                    dayElement.setAttribute('data-type', 'api-next-period');
+                    dayElement.setAttribute('data-priority', '3');
+                    return; // 🚀 予測が見つかったら即座に終了
+                }
+            }
+            
+            // ⭐ 優先順位4: 次回排卵予測（APIから）
+            if (userData.predictions && userData.predictions.ovulation) {
+                const ovulationDate = new Date(userData.predictions.ovulation.date);
+                
+                if (date.toDateString() === ovulationDate.toDateString()) {
+                    console.log(`✅ Found API ovulation prediction: ${ovulationDate.toDateString()}`);
+                    dayElement.classList.add('predicted-ovulation');
+                    dayElement.setAttribute('data-type', 'api-ovulation');
+                    dayElement.setAttribute('data-priority', '4');
+                    return; // 🚀 予測が見つかったら即座に終了
+                }
+            }
+            
+            // ⭐ 優先順位5: フォールバック - ローカル計算による予測（最後の手段）
+            if (userData.records && userData.records.length > 0) {
+                console.log(`🔧 Fallback: Using local calculation`);
+                
                 const lastRecord = userData.records[0];
                 const lastPeriodStart = new Date(lastRecord.startDate);
                 const cycle = userData.settings.cycle || 28;
                 const period = userData.settings.period || 5;
                 
-                // 次回以降の生理予測（3ヶ月先まで）
+                // 最大3サイクル分だけ計算（パフォーマンス重視）
                 for (let cycleCount = 1; cycleCount <= 3; cycleCount++) {
                     const predictedStart = new Date(lastPeriodStart);
                     predictedStart.setDate(lastPeriodStart.getDate() + (cycle * cycleCount));
@@ -845,23 +886,116 @@
                     const predictedEnd = new Date(predictedStart);
                     predictedEnd.setDate(predictedStart.getDate() + period - 1);
                     
-                    if (isDateInRange(date, predictedStart, predictedEnd)) {
+                    // フォールバック予測生理期間
+                    if (date >= predictedStart && date <= predictedEnd) {
+                        console.log(`✅ Found fallback predicted period: ${predictedStart.toDateString()} - ${predictedEnd.toDateString()}`);
                         dayElement.classList.add('predicted-period');
-                        return;
+                        dayElement.setAttribute('data-type', 'fallback-predicted-period');
+                        dayElement.setAttribute('data-priority', '5');
+                        dayElement.setAttribute('data-cycle', cycleCount);
+                        return; // 🚀 予測が見つかったら即座に終了
                     }
                     
-                    // 排卵日予測
+                    // フォールバック予測排卵日
                     const predictedOvulation = new Date(predictedStart);
                     predictedOvulation.setDate(predictedStart.getDate() - 14);
                     
-                    if (isSameDate(date, predictedOvulation)) {
+                    if (date.toDateString() === predictedOvulation.toDateString()) {
+                        console.log(`✅ Found fallback predicted ovulation: ${predictedOvulation.toDateString()}`);
                         dayElement.classList.add('predicted-ovulation');
-                        return;
+                        dayElement.setAttribute('data-type', 'fallback-predicted-ovulation');
+                        dayElement.setAttribute('data-priority', '5');
+                        dayElement.setAttribute('data-cycle', cycleCount);
+                        return; // 🚀 予測が見つかったら即座に終了
                     }
                 }
             }
+            
+            // 🚀 何も見つからない場合
+            console.log(`❌ No marking found for date: ${date.toDateString()}`);
+            dayElement.setAttribute('data-type', 'none');
+            dayElement.setAttribute('data-priority', '0');
         }
 
+        // 🚀 カレンダー再描画関数（新しい記録保存後に呼び出し）
+        function refreshCalendarDisplay() {
+            console.log('🔄 Refreshing calendar display...');
+            
+            // 全日付セルを取得
+            const allDayCells = document.querySelectorAll('.calendar-day:not(.empty-day)');
+            
+            console.log(`🔄 Found ${allDayCells.length} calendar cells to refresh`);
+            
+            allDayCells.forEach(dayCell => {
+                // 既存のクラスをクリア
+                dayCell.classList.remove('period', 'predicted-period', 'predicted-ovulation', 'ovulation');
+                
+                // データ属性をクリア
+                dayCell.removeAttribute('data-type');
+                dayCell.removeAttribute('data-priority');
+                dayCell.removeAttribute('data-cycle');
+                
+                // 日付を取得して再マーキング
+                const dayNumber = dayCell.querySelector('.day-number')?.textContent;
+                if (dayNumber) {
+                    // 親要素から年月を取得
+                    const monthElement = dayCell.closest('.calendar-month');
+                    const monthTitle = monthElement?.querySelector('.month-title')?.textContent;
+                    
+                    if (monthTitle) {
+                        const [year, month] = monthTitle.replace('年', '-').replace('月', '').split('-');
+                        const cellDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(dayNumber));
+                        
+                        // 再マーキング
+                        markCalendarDay(dayCell, cellDate);
+                    }
+                }
+            });
+            
+            console.log('✅ Calendar display refreshed');
+        }
+
+        // 🚀 データ更新時のカレンダー更新（外部から呼び出し用）
+        window.updateCalendarAfterSave = function() {
+            console.log('🚀 External calendar update triggered');
+            
+            // データを再取得してカレンダーを更新
+            if (currentUser && currentUser.userId) {
+                loadCalendarData(currentUser.userId)
+                    .then(() => {
+                        console.log('✅ Calendar data reloaded successfully');
+                        refreshCalendarDisplay();
+                    })
+                    .catch(error => {
+                        console.error('❌ Failed to reload calendar data:', error);
+                    });
+            }
+        };
+
+        // 🚀 デバッグ用: カレンダー状態を確認
+        window.debugCalendarState = function() {
+            console.log('📊 Calendar Debug State:');
+            console.log('📅 Current userData:', userData);
+            console.log('👤 Current user:', currentUser);
+            
+            const allDayCells = document.querySelectorAll('.calendar-day:not(.empty-day)');
+            const markedCells = Array.from(allDayCells).filter(cell => 
+                cell.classList.contains('period') || 
+                cell.classList.contains('predicted-period') || 
+                cell.classList.contains('predicted-ovulation')
+            );
+            
+            console.log(`📊 Total cells: ${allDayCells.length}, Marked cells: ${markedCells.length}`);
+            
+            markedCells.forEach(cell => {
+                const dayNumber = cell.querySelector('.day-number')?.textContent;
+                const type = cell.getAttribute('data-type');
+                const priority = cell.getAttribute('data-priority');
+                const cycle = cell.getAttribute('data-cycle');
+                
+                console.log(`📍 Day ${dayNumber}: ${type} (priority: ${priority}, cycle: ${cycle})`);
+            });
+        };
         // スクロール検知で月表示を更新
         function handleScroll() {
             const container = document.getElementById('calendarScrollContainer');

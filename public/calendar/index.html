@@ -4,776 +4,471 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>カレンダー - 生理日共有アプリ</title>
-    <!-- LIFF SDK -->
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8f9ff;
-            color: #333;
-            overflow-x: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ffeef8 0%, #ffe8f3 100%);
+            padding: 20px;
+            min-height: 100vh;
         }
-        
+
         .container {
             max-width: 400px;
             margin: 0 auto;
             background: white;
-            min-height: 100vh;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
         }
-        
+
         .header {
-            background: white;
+            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+            color: white;
             padding: 20px;
             text-align: center;
-            border-bottom: 1px solid #f0f0f0;
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            position: relative;
         }
-        
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
         .current-month {
-            font-size: 20px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 5px;
-        }
-        
-        .today-indicator {
-            font-size: 14px;
-            color: #7dd3fc;
-            background: #e0f2fe;
-            padding: 4px 12px;
-            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
             display: inline-block;
         }
-        
+
         .user-info {
-            background: rgba(125, 211, 252, 0.1);
-            padding: 8px 16px;
-            font-size: 12px;
-            text-align: center;
-            color: #0284c7;
-            border-bottom: 1px solid #f0f0f0;
+            display: none;
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
         }
-        
-        .quick-nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 20px;
-            background: #f8fafc;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        
-        .nav-btn {
-            background: #e3f2fd;
-            color: #1976d2;
-            border: none;
-            border-radius: 8px;
-            padding: 8px 12px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        
-        .nav-btn:hover {
-            background: #bbdefb;
-        }
-        
-        .nav-info {
-            font-size: 12px;
-            color: #6b7280;
-            text-align: center;
-        }
-        
-        .calendar-scroll-container {
-            height: calc(100vh - 180px);
+
+        .calendar-container {
+            height: 500px;
             overflow-y: auto;
-            scroll-behavior: smooth;
+            padding: 20px;
         }
-        
+
         .calendar-month {
-            padding: 20px 16px;
-            border-bottom: 1px solid #f5f5f5;
+            margin-bottom: 30px;
         }
-        
+
         .month-title {
             font-size: 18px;
-            font-weight: 600;
-            color: #666;
-            margin-bottom: 16px;
+            font-weight: bold;
             text-align: center;
+            margin-bottom: 15px;
+            color: #333;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
         }
-        
+
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 1px;
-            background: #f8f9fa;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            gap: 5px;
+            margin-bottom: 20px;
         }
-        
+
         .day-header {
-            background: white;
-            padding: 12px 4px;
             text-align: center;
-            font-size: 11px;
-            font-weight: 600;
-            color: #9ca3af;
-            text-transform: uppercase;
+            padding: 10px 5px;
+            font-weight: bold;
+            font-size: 14px;
+            color: #666;
+            border-bottom: 1px solid #eee;
         }
-        
+
+        .day-header:first-child {
+            color: #ff6b6b;
+        }
+
+        .day-header:last-child {
+            color: #4ecdc4;
+        }
+
         .calendar-day {
-            background: white;
             aspect-ratio: 1;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
+            border-radius: 8px;
             cursor: pointer;
+            transition: all 0.3s ease;
             position: relative;
-            transition: all 0.2s ease;
+            min-height: 40px;
+            border: 1px solid #f0f0f0;
         }
-        
+
         .calendar-day:hover {
-            background: #f8fafc;
+            background: #f8f9fa;
+            transform: scale(1.05);
         }
-        
-        .day-number {
-            font-size: 15px;
-            font-weight: 500;
-            color: #374151;
-            z-index: 2;
-            line-height: 1;
-        }
-        
-        .empty-day {
-            background: transparent;
+
+        .calendar-day.empty-day {
             cursor: default;
+            border: none;
         }
-        
-        .empty-day:hover {
+
+        .calendar-day.empty-day:hover {
             background: transparent;
+            transform: none;
         }
-        
-        /* 今日のハイライト */
+
+        .day-number {
+            font-weight: 500;
+            font-size: 14px;
+            z-index: 1;
+        }
+
         .calendar-day.today {
-            background: linear-gradient(135deg, #e8f5e8, #f0f9ff);
-            border: 2px solid #4caf50;
-            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
         }
-        
-        .calendar-day.today .day-number {
-            color: #2e7d32;
-            font-weight: 700;
-            font-size: 16px;
+
+        .calendar-day.today:hover {
+            transform: scale(1.1);
         }
-        
-        .calendar-day.today::before {
-            content: '今日';
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            font-size: 8px;
-            color: #2e7d32;
-            font-weight: 600;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 1px 3px;
-            border-radius: 4px;
+
+        .calendar-day.period {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
         }
-        
-        /* 自分の生理日マーキング */
-        .calendar-day.period,
+
         .calendar-day.predicted-period {
-            background: white;
+            background: linear-gradient(135deg, #ffb3ba 0%, #ffa8a8 100%);
+            color: #333;
+            font-weight: bold;
+            border: 2px dashed #ff6b6b;
         }
-        
-        .calendar-day.period .day-number,
-        .calendar-day.predicted-period .day-number {
-            color: #374151;
-            font-weight: 500;
-        }
-        
-        .calendar-day.period::after,
-        .calendar-day.predicted-period::after {
-            content: '🌸';
-            position: absolute;
-            bottom: 2px;
-            right: 2px;
-            font-size: 10px;
-        }
-        
-        /* パートナーの生理日マーキング */
-        .calendar-day.partner-period {
-            background: white;
-            border: 1px solid #f97316;
-        }
-        
-        .calendar-day.partner-period .day-number {
-            color: #374151;
-            font-weight: 500;
-        }
-        
-        .calendar-day.partner-period::after {
-            content: '🧡';
-            position: absolute;
-            bottom: 2px;
-            left: 2px;
-            font-size: 10px;
-        }
-        
-        /* 排卵日マーキング */
+
         .calendar-day.ovulation,
         .calendar-day.predicted-ovulation {
-            background: white;
+            background: linear-gradient(135deg, #ffd93d 0%, #ffcd3c 100%);
+            color: #333;
+            font-weight: bold;
+            border: 2px solid #ff9800;
+            box-shadow: 0 4px 15px rgba(255, 217, 61, 0.3);
         }
-        
-        .calendar-day.ovulation .day-number,
-        .calendar-day.predicted-ovulation .day-number {
-            color: #374151;
-            font-weight: 500;
+
+        .calendar-day.predicted-ovulation {
+            border-style: dashed;
         }
-        
-        .calendar-day.ovulation::after,
-        .calendar-day.predicted-ovulation::after {
-            content: '🥚';
-            position: absolute;
-            bottom: 2px;
-            right: 2px;
-            font-size: 10px;
-        }
-        
-        .legend {
-            background: white;
-            padding: 16px;
-            margin: 16px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        }
-        
-        .legend-title {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: #374151;
-            text-align: center;
-        }
-        
-        .legend-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-        
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            color: #6b7280;
-        }
-        
-        .legend-color {
-            width: 16px;
-            height: 16px;
-            border-radius: 4px;
-            flex-shrink: 0;
-        }
-        
-        .legend-today { 
-            background: linear-gradient(135deg, #e8f5e8, #f0f9ff);
-            border: 1px solid #4caf50;
-        }
-        
-        .legend-period,
-        .legend-predicted { 
-            background: white;
-            border: 1px solid #e5e7eb;
-            position: relative;
-        }
-        
-        .legend-period::after,
-        .legend-predicted::after {
-            content: '🌸';
-            position: absolute;
-            bottom: 1px;
-            right: 1px;
-            font-size: 8px;
-        }
-        
-        .legend-partner { 
-            background: white;
-            border: 1px solid #f97316;
-            position: relative;
-        }
-        
-        .legend-partner::after {
-            content: '🧡';
-            position: absolute;
-            bottom: 1px;
-            left: 1px;
-            font-size: 8px;
-        }
-        
-        .legend-ovulation { 
-            background: white;
-            border: 1px solid #e5e7eb;
-            position: relative;
-        }
-        
-        .legend-ovulation::after {
-            content: '🥚';
-            position: absolute;
-            bottom: 1px;
-            right: 1px;
-            font-size: 8px;
-        }
-        
+
         .loading {
             text-align: center;
-            padding: 60px 20px;
-            color: #6b7280;
+            padding: 40px;
+            color: #666;
         }
-        
-        .loading-spinner {
-            width: 32px;
-            height: 32px;
-            border: 3px solid #f3f4f6;
-            border-top: 3px solid #7dd3fc;
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #ff69b4;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin: 0 auto 16px;
+            margin-left: 10px;
         }
-        
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
-        .error-message {
-            background: #fef2f2;
-            color: #dc2626;
-            padding: 16px;
-            border-radius: 12px;
+
+        .error {
+            display: none;
             text-align: center;
-            margin: 20px 16px;
-            font-size: 14px;
-            border: 1px solid #fecaca;
+            padding: 40px;
+            color: #ff4444;
+            background: #fff5f5;
+            border: 1px solid #ffeeee;
+            border-radius: 10px;
+            margin: 20px;
         }
-        
-        /* モーダルスタイル */
+
+        .error h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .error p {
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .error .error-actions {
+            margin-top: 20px;
+        }
+
+        .error .error-actions button {
+            background: #ff69b4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+
+        .error .error-actions button:hover {
+            background: #ff1493;
+        }
+
         .modal {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.4);
             z-index: 1000;
-            padding: 20px;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
         }
-        
+
         .modal-content {
             background: white;
-            border-radius: 16px;
-            padding: 24px;
-            max-width: 350px;
-            margin: 20% auto 0;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            position: relative;
         }
-        
-        .modal-header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        
-        .modal-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 8px;
-        }
-        
-        .modal-subtitle {
-            font-size: 14px;
-            color: #6b7280;
-        }
-        
-        .form-group {
-            margin-bottom: 16px;
-        }
-        
-        .form-label {
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 6px;
-        }
-        
-        .form-input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: border-color 0.3s;
-        }
-        
-        .form-input:focus {
-            outline: none;
-            border-color: #7dd3fc;
-        }
-        
-        .date-input-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-        
-        .modal-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 20px;
-        }
-        
-        .modal-btn {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
             cursor: pointer;
-            transition: background 0.2s;
+            position: absolute;
+            right: 15px;
+            top: 10px;
         }
-        
-        .modal-btn-cancel {
-            background: #f3f4f6;
-            color: #374151;
+
+        .close:hover {
+            color: #000;
         }
-        
-        .modal-btn-cancel:hover {
-            background: #e5e7eb;
-        }
-        
-        .modal-btn-primary {
-            background: #7dd3fc;
-            color: white;
-        }
-        
-        .modal-btn-primary:hover {
-            background: #0284c7;
-        }
-        
-        .modal-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        
-        .success-message, .error-modal-message {
-            padding: 12px;
-            border-radius: 8px;
-            margin: 12px 0;
-            text-align: center;
-            font-size: 14px;
-        }
-        
-        .success-message {
-            background: #f0fdf4;
-            color: #16a34a;
-            border: 1px solid #bbf7d0;
-        }
-        
-        .error-modal-message {
-            background: #fef2f2;
-            color: #dc2626;
-            border: 1px solid #fecaca;
-        }
-        
-        .day-detail-modal .modal-content {
-            max-width: 320px;
-            margin: 50% auto 0;
-            transform: translateY(-50%);
-        }
-        
+
         .modal-date {
             font-size: 20px;
-            font-weight: 600;
-            color: #374151;
-        }
-        
-        .modal-info {
-            font-size: 14px;
-            color: #6b7280;
-            line-height: 1.6;
-            margin-bottom: 20px;
-        }
-        
-        .modal-close {
-            background: #7dd3fc;
-            color: white;
-            border: none;
-            border-radius: 12px;
-            padding: 12px 24px;
-            width: 100%;
-            cursor: pointer;
-            font-weight: 600;
-            transition: background 0.2s;
-        }
-        
-        .modal-close:hover {
-            background: #0284c7;
-        }
-        
-        .scroll-hint {
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
             text-align: center;
-            padding: 12px;
-            color: #9ca3af;
+        }
+
+        .modal-info {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #555;
+            text-align: center;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: space-around;
+            padding: 15px;
+            background: #f8f9fa;
+            border-top: 1px solid #eee;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
             font-size: 12px;
-            background: #f8fafc;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .legend-period {
+            background: #ff6b6b;
+        }
+
+        .legend-predicted {
+            background: #ffb3ba;
+            border: 1px dashed #ff6b6b;
+        }
+
+        .legend-ovulation {
+            background: #ffd93d;
+            border: 1px solid #ff9800;
+        }
+
+        .legend-today {
+            background: #4ecdc4;
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 480px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+                min-height: 100vh;
+            }
+
+            .calendar-container {
+                height: calc(100vh - 200px);
+            }
+
+            .day-number {
+                font-size: 12px;
+            }
+
+            .calendar-day {
+                min-height: 35px;
+            }
+
+            .legend {
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .legend-item {
+                justify-content: center;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="userInfo" class="user-info" style="display: none;">
-            <!-- ユーザー情報 -->
-        </div>
-        
         <div class="header">
-            <div class="current-month" id="currentMonth">2024年5月</div>
-            <div class="today-indicator">今日</div>
+            <div id="userInfo" class="user-info"></div>
+            <h1>📅 カレンダー</h1>
+            <div id="currentMonth" class="current-month">読み込み中...</div>
         </div>
-        
-        <div class="quick-nav">
-            <button class="nav-btn" onclick="scrollToToday()">今日に移動</button>
-            <div class="nav-info">上下にスワイプして月を移動</div>
-            <button class="nav-btn" onclick="showAddPastPeriodModal()">過去生理を追加</button>
-        </div>
-        
+
         <div id="loading" class="loading">
-            <div class="loading-spinner"></div>
-            <p>カレンダーを読み込んでいます...</p>
+            カレンダーを読み込み中
+        </div>
+
+        <div id="error" class="error">
+            <h3>❌ データの読み込みに失敗しました</h3>
+            <p>LINEアプリから正しくアクセスしてください。</p>
+            <div class="error-actions">
+                <button onclick="retryLoad()">再試行</button>
+                <button onclick="goToLINE()">LINEに戻る</button>
+            </div>
         </div>
 
         <div id="calendar-content" style="display: none;">
-            <div class="calendar-scroll-container" id="calendarScrollContainer">
-                <!-- 複数月のカレンダーがここに生成される -->
+            <div id="calendarScrollContainer" class="calendar-container">
+                <!-- カレンダーがここに動的に生成されます -->
             </div>
-            
-            <div class="legend">
-                <div class="legend-title">カレンダー凡例</div>
-                <div class="legend-grid">
-                    <div class="legend-item">
-                        <div class="legend-color legend-today"></div>
-                        <span>今日</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color legend-period"></div>
-                        <span>自分の生理 🌸</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color legend-partner"></div>
-                        <span>パートナーの生理 🧡</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color legend-ovulation"></div>
-                        <span>排卵日 🥚</span>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <div id="error" style="display: none;">
-            <div class="error-message">
-                データの読み込みに失敗しました。<br>
-                LINEから正しくアクセスしてください。
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color legend-today"></div>
+                    <span>今日</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color legend-period"></div>
+                    <span>生理日</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color legend-predicted"></div>
+                    <span>予測</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color legend-ovulation"></div>
+                    <span>排卵日</span>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- 日付詳細モーダル -->
-    <div id="dayModal" class="modal day-detail-modal">
+    <div id="dayModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-date" id="modalDate">5月30日</div>
-            </div>
-            <div class="modal-info" id="modalInfo">
-                <!-- 日付の詳細情報 -->
-            </div>
-            <button class="modal-close" onclick="closeDayModal()">閉じる</button>
+            <span class="close" onclick="closeDayModal()">&times;</span>
+            <div id="modalDate" class="modal-date"></div>
+            <div id="modalInfo" class="modal-info"></div>
         </div>
     </div>
-    
-    <!-- 過去生理追加モーダル -->
-    <div id="addPastPeriodModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title">過去生理を追加</div>
-                <div class="modal-subtitle">過去の生理日を手動で登録できます</div>
-            </div>
-            
-            <div id="pastPeriodForm">
-                <div class="date-input-group">
-                    <div class="form-group">
-                        <label class="form-label">開始日</label>
-                        <input type="date" class="form-input" id="pastStartDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">終了日</label>
-                        <input type="date" class="form-input" id="pastEndDate" required>
-                    </div>
-                </div>
-                
-                <div id="pastPeriodMessage" style="display: none;"></div>
-                
-                <div class="modal-actions">
-                    <button class="modal-btn modal-btn-cancel" onclick="hideAddPastPeriodModal()">
-                        キャンセル
-                    </button>
-                    <button class="modal-btn modal-btn-primary" onclick="addPastPeriod()" id="addPastPeriodBtn">
-                        追加
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+
     <script>
-        // 🌍 タイムゾーン対応版: 日付処理関数集（カレンダー用）
+        // 🌍 タイムゾーン対応版: 日付処理関数集
         const TimezoneFixes = {
-            /**
-             * ISO文字列を日本時間の Date オブジェクトに変換
-             */
             parseISOToJapanDate: function(isoString) {
                 if (!isoString) return null;
-                
-                console.log(`🌍 Parsing ISO string: ${isoString}`);
-                
-                // ISO文字列から日付部分を抽出
                 const dateOnly = isoString.split('T')[0];
-                
-                // 日本時間として解釈
                 return this.parseJapanDate(dateOnly);
             },
 
-            /**
-             * 日付文字列を日本時間の Date オブジェクトに安全に変換
-             */
             parseJapanDate: function(dateString) {
                 if (!dateString) return null;
-                
-                console.log(`🌍 Parsing date: ${dateString}`);
-                
-                // YYYY-MM-DD 形式の場合、日本時間として解釈
                 const [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
-                
-                // 日本時間で正確に作成（月は0から始まる）
                 const japanDate = new Date(year, month - 1, day, 0, 0, 0, 0);
-                
-                console.log(`✅ Parsed to Japan date: ${japanDate.toLocaleDateString('ja-JP')}`);
                 return japanDate;
             },
 
-            /**
-             * Date オブジェクトを日本時間の YYYY-MM-DD 形式に変換
-             */
             formatJapanDate: function(date) {
-                if (!date || isNaN(date.getTime())) {
-                    return '日付不明';
-                }
-                
-                // 日本時間で年月日を取得
+                if (!date || isNaN(date.getTime())) return '日付不明';
                 const year = date.getFullYear();
                 const month = String(date.getMonth() + 1).padStart(2, '0');
                 const day = String(date.getDate()).padStart(2, '0');
-                
-                const formatted = `${year}-${month}-${day}`;
-                console.log(`📅 Formatted Japan date: ${formatted}`);
-                return formatted;
+                return `${year}-${month}-${day}`;
             },
 
-            /**
-             * 今日の日付を日本時間で取得
-             */
             getTodayJapan: function() {
                 const now = new Date();
-                
-                // 日本時間で今日の日付を作成（時間は00:00:00）
-                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-                
-                console.log(`📅 Today Japan: ${today.toLocaleDateString('ja-JP')}`);
-                return today;
+                return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
             },
 
-            /**
-             * 日付が同じかチェック（日本時間ベース）
-             */
             isSameDateJapan: function(date1, date2) {
                 if (!date1 || !date2) return false;
-                
                 return date1.getFullYear() === date2.getFullYear() &&
                        date1.getMonth() === date2.getMonth() &&
                        date1.getDate() === date2.getDate();
             },
 
-            /**
-             * 日付に日数を加算（日本時間ベース）
-             */
             addDaysJapan: function(date, days) {
                 if (!date || isNaN(date.getTime())) return null;
-                
                 const result = new Date(date);
                 result.setDate(result.getDate() + days);
-                
-                console.log(`📅 Added ${days} days to ${this.formatJapanDate(date)} = ${this.formatJapanDate(result)}`);
                 return result;
             },
 
-            /**
-             * 日付間の日数を計算（日本時間ベース）
-             */
             daysBetweenJapan: function(startDate, endDate) {
                 if (!startDate || !endDate) return 0;
-                
-                // 日付のみで計算（時間は無視）
                 const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
                 const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
-                
                 const timeDiff = end - start;
-                const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-                
-                console.log(`📊 Days between ${this.formatJapanDate(startDate)} and ${this.formatJapanDate(endDate)}: ${daysDiff}`);
-                return daysDiff;
-            },
-
-            /**
-             * デバッグ用: 日付情報を詳細表示
-             */
-            debugDateInfo: function(date, label = 'Date') {
-                if (!date) {
-                    console.log(`🐛 ${label}: null`);
-                    return;
-                }
-                
-                console.log(`🐛 ${label} Debug Info:`);
-                console.log(`   - toString(): ${date.toString()}`);
-                console.log(`   - toISOString(): ${date.toISOString()}`);
-                console.log(`   - toLocaleDateString('ja-JP'): ${date.toLocaleDateString('ja-JP')}`);
-                console.log(`   - getFullYear(): ${date.getFullYear()}`);
-                console.log(`   - getMonth(): ${date.getMonth()}`);
-                console.log(`   - getDate(): ${date.getDate()}`);
-                console.log(`   - getTimezoneOffset(): ${date.getTimezoneOffset()}`);
+                return Math.floor(timeDiff / (1000 * 60 * 60 * 24));
             }
         };
 
@@ -786,20 +481,31 @@
         // 🌍 今日の日付（タイムゾーン対応）
         const today = TimezoneFixes.getTodayJapan();
 
+        // エラーアクション
+        function retryLoad() {
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+            
+            if (currentUser && currentUser.userId) {
+                loadCalendarData(currentUser.userId);
+            } else {
+                initializeLiffAndLoadCalendar();
+            }
+        }
+
+        function goToLINE() {
+            if (liff.isInClient()) {
+                liff.closeWindow();
+            } else {
+                window.close();
+            }
+        }
+
         // ユーザー情報表示
         function showUserInfo(profile) {
             const userInfoDiv = document.getElementById('userInfo');
-            userInfoDiv.innerHTML = `
-                👤 ${profile.displayName} さん
-            `;
+            userInfoDiv.innerHTML = `👤 ${profile.displayName} さん`;
             userInfoDiv.style.display = 'block';
-        }
-
-        // 月の表示更新
-        function updateCurrentMonthDisplay() {
-            const currentMonthElement = document.getElementById('currentMonth');
-            currentMonthElement.textContent = 
-                `${currentViewDate.getFullYear()}年${currentViewDate.getMonth() + 1}月`;
         }
 
         // 複数月のカレンダーを生成
@@ -816,7 +522,7 @@
 
             // 今月を中央に表示
             setTimeout(() => {
-                const todayMonthElement = container.children[2]; // 0-indexで2番目が今月
+                const todayMonthElement = container.children[2];
                 if (todayMonthElement) {
                     todayMonthElement.scrollIntoView({ block: 'start', behavior: 'smooth' });
                 }
@@ -850,7 +556,7 @@
                 gridDiv.appendChild(headerDiv);
             });
             
-            // 日付セル生成 - 当月のみ表示
+            // 日付セル生成
             const firstDay = new Date(year, month, 1);
             const lastDay = new Date(year, month + 1, 0);
             
@@ -861,7 +567,7 @@
                 gridDiv.appendChild(emptyDiv);
             }
             
-            // 当月の日付のみを表示
+            // 当月の日付を表示
             for (let date = 1; date <= lastDay.getDate(); date++) {
                 const cellDate = new Date(year, month, date);
                 
@@ -892,154 +598,74 @@
             return monthDiv;
         }
 
-        // 🚀 カレンダー日付をマーキング（タイムゾーン修正版）
+        // カレンダー日付をマーキング
         function markCalendarDay(dayElement, date) {
             if (!userData || !userData.settings) return;
             
-            console.log(`🎯 Marking date: ${TimezoneFixes.formatJapanDate(date)}`);
-            
-            // ⭐ 優先順位1: 実際の生理記録（最優先）
+            // 実際の生理記録をチェック
             if (userData.records && userData.records.length > 0) {
-                console.log(`🔍 Checking ${userData.records.length} actual records`);
-                
                 for (const record of userData.records) {
-                    // 🌍 タイムゾーン対応: ISO文字列を日本時間に変換
                     const startDate = TimezoneFixes.parseISOToJapanDate(record.startDate);
                     const endDate = record.endDate ? TimezoneFixes.parseISOToJapanDate(record.endDate) : null;
                     
-                    console.log(`📊 Record: ${TimezoneFixes.formatJapanDate(startDate)} - ${endDate ? TimezoneFixes.formatJapanDate(endDate) : 'No end date'}`);
-                    
                     // 実際の生理期間中
                     if (endDate && date >= startDate && date <= endDate) {
-                        console.log(`✅ Found actual period record: ${TimezoneFixes.formatJapanDate(startDate)} - ${TimezoneFixes.formatJapanDate(endDate)}`);
                         dayElement.classList.add('period');
-                        dayElement.setAttribute('data-type', 'actual-period');
-                        dayElement.setAttribute('data-priority', '1');
-                        return; // 🚀 実際の記録が見つかったら即座に終了
+                        return;
                     } 
                     
-                    // 実際の生理開始日のみ（終了日未設定）
+                    // 実際の生理開始日のみ
                     if (!endDate && TimezoneFixes.isSameDateJapan(date, startDate)) {
-                        console.log(`✅ Found actual period start: ${TimezoneFixes.formatJapanDate(startDate)}`);
                         dayElement.classList.add('period');
-                        dayElement.setAttribute('data-type', 'actual-period-start');
-                        dayElement.setAttribute('data-priority', '1');
-                        return; // 🚀 実際の記録が見つかったら即座に終了
+                        return;
                     }
                 }
             }
             
-            // 🚀 ここに到達するのは実際の記録がない場合のみ
-            console.log(`🔮 No actual records found, checking predictions`);
-            
-            // ⭐ 優先順位2: API予測データ（webHandler.jsから取得）
+            // API予測データをチェック
             if (userData.predictions && userData.predictions.futurePredictions) {
-                console.log(`🔍 Checking API future predictions (${userData.predictions.futurePredictions.length} cycles)`);
-                
                 for (const prediction of userData.predictions.futurePredictions) {
-                    // 🌍 タイムゾーン対応: API予測データの変換
                     const predictedStart = TimezoneFixes.parseISOToJapanDate(prediction.period.startDate);
                     const predictedEnd = TimezoneFixes.parseISOToJapanDate(prediction.period.endDate);
                     const predictedOvulation = TimezoneFixes.parseISOToJapanDate(prediction.ovulation.date);
                     
                     // 予測生理期間
                     if (date >= predictedStart && date <= predictedEnd) {
-                        console.log(`✅ Found API predicted period: ${TimezoneFixes.formatJapanDate(predictedStart)} - ${TimezoneFixes.formatJapanDate(predictedEnd)}`);
                         dayElement.classList.add('predicted-period');
-                        dayElement.setAttribute('data-type', 'api-predicted-period');
-                        dayElement.setAttribute('data-priority', '2');
-                        dayElement.setAttribute('data-cycle', prediction.cycle);
-                        return; // 🚀 予測が見つかったら即座に終了
+                        return;
                     }
                     
                     // 予測排卵日
                     if (TimezoneFixes.isSameDateJapan(date, predictedOvulation)) {
-                        console.log(`✅ Found API predicted ovulation: ${TimezoneFixes.formatJapanDate(predictedOvulation)}`);
                         dayElement.classList.add('predicted-ovulation');
-                        dayElement.setAttribute('data-type', 'api-predicted-ovulation');
-                        dayElement.setAttribute('data-priority', '2');
-                        dayElement.setAttribute('data-cycle', prediction.cycle);
-                        return; // 🚀 予測が見つかったら即座に終了
+                        return;
                     }
                 }
             }
             
-            // ⭐ 優先順位3: 次回生理予測（APIから）
+            // 次回生理予測
             if (userData.predictions && userData.predictions.nextPeriod) {
-                // 🌍 タイムゾーン対応: 次回予測データの変換
                 const nextStart = TimezoneFixes.parseISOToJapanDate(userData.predictions.nextPeriod.startDate);
                 const nextEnd = TimezoneFixes.parseISOToJapanDate(userData.predictions.nextPeriod.endDate);
                 
                 if (date >= nextStart && date <= nextEnd) {
-                    console.log(`✅ Found API next period prediction: ${TimezoneFixes.formatJapanDate(nextStart)} - ${TimezoneFixes.formatJapanDate(nextEnd)}`);
                     dayElement.classList.add('predicted-period');
-                    dayElement.setAttribute('data-type', 'api-next-period');
-                    dayElement.setAttribute('data-priority', '3');
-                    return; // 🚀 予測が見つかったら即座に終了
+                    return;
                 }
             }
             
-            // ⭐ 優先順位4: 次回排卵予測（APIから）
+            // 排卵日予測
             if (userData.predictions && userData.predictions.ovulation) {
-                // 🌍 タイムゾーン対応: 排卵予測データの変換
                 const ovulationDate = TimezoneFixes.parseISOToJapanDate(userData.predictions.ovulation.date);
                 
                 if (TimezoneFixes.isSameDateJapan(date, ovulationDate)) {
-                    console.log(`✅ Found API ovulation prediction: ${TimezoneFixes.formatJapanDate(ovulationDate)}`);
                     dayElement.classList.add('predicted-ovulation');
-                    dayElement.setAttribute('data-type', 'api-ovulation');
-                    dayElement.setAttribute('data-priority', '4');
-                    return; // 🚀 予測が見つかったら即座に終了
+                    return;
                 }
             }
-            
-            // ⭐ 優先順位5: フォールバック - ローカル計算による予測（最後の手段）
-            if (userData.records && userData.records.length > 0) {
-                console.log(`🔧 Fallback: Using local calculation`);
-                
-                const lastRecord = userData.records[0];
-                // 🌍 タイムゾーン対応: 最新記録の変換
-                const lastPeriodStart = TimezoneFixes.parseISOToJapanDate(lastRecord.startDate);
-                const cycle = userData.settings.cycle || 28;
-                const period = userData.settings.period || 5;
-                
-                // 最大3サイクル分だけ計算（パフォーマンス重視）
-                for (let cycleCount = 1; cycleCount <= 3; cycleCount++) {
-                    // 🌍 タイムゾーン対応: 予測日計算
-                    const predictedStart = TimezoneFixes.addDaysJapan(lastPeriodStart, cycle * cycleCount);
-                    const predictedEnd = TimezoneFixes.addDaysJapan(predictedStart, period - 1);
-                    
-                    // フォールバック予測生理期間
-                    if (date >= predictedStart && date <= predictedEnd) {
-                        console.log(`✅ Found fallback predicted period: ${TimezoneFixes.formatJapanDate(predictedStart)} - ${TimezoneFixes.formatJapanDate(predictedEnd)}`);
-                        dayElement.classList.add('predicted-period');
-                        dayElement.setAttribute('data-type', 'fallback-predicted-period');
-                        dayElement.setAttribute('data-priority', '5');
-                        dayElement.setAttribute('data-cycle', cycleCount);
-                        return; // 🚀 予測が見つかったら即座に終了
-                    }
-                    
-                    // フォールバック予測排卵日
-                    const predictedOvulation = TimezoneFixes.addDaysJapan(predictedStart, -14);
-                    
-                    if (TimezoneFixes.isSameDateJapan(date, predictedOvulation)) {
-                        console.log(`✅ Found fallback predicted ovulation: ${TimezoneFixes.formatJapanDate(predictedOvulation)}`);
-                        dayElement.classList.add('predicted-ovulation');
-                        dayElement.setAttribute('data-type', 'fallback-predicted-ovulation');
-                        dayElement.setAttribute('data-priority', '5');
-                        dayElement.setAttribute('data-cycle', cycleCount);
-                        return; // 🚀 予測が見つかったら即座に終了
-                    }
-                }
-            }
-            
-            // 🚀 何も見つからない場合
-            console.log(`❌ No marking found for date: ${TimezoneFixes.formatJapanDate(date)}`);
-            dayElement.setAttribute('data-type', 'none');
-            dayElement.setAttribute('data-priority', '0');
         }
 
-        // 🌍 日付詳細を表示（タイムゾーン対応）
+        // 日付詳細を表示
         function showDayDetail(date) {
             const modal = document.getElementById('dayModal');
             const modalDate = document.getElementById('modalDate');
@@ -1056,7 +682,7 @@
             modal.style.display = 'block';
         }
 
-        // 🌍 日付の詳細情報を取得（タイムゾーン対応）
+        // 日付の詳細情報を取得
         function getDayDetailInfo(date) {
             if (!userData) return '情報を読み込み中...';
             
@@ -1064,7 +690,6 @@
             
             // 実際の記録をチェック
             for (const record of userData.records || []) {
-                // 🌍 タイムゾーン対応: 記録データの変換
                 const startDate = TimezoneFixes.parseISOToJapanDate(record.startDate);
                 const endDate = record.endDate ? TimezoneFixes.parseISOToJapanDate(record.endDate) : null;
                 
@@ -1079,43 +704,9 @@
                 }
             }
             
-            // 🔧 複数月予測情報（生理・排卵のみ）
-            if (info.length === 0 && userData.records && userData.records.length > 0) {
-                const lastRecord = userData.records[0];
-                // 🌍 タイムゾーン対応: 最新記録の変換
-                const lastPeriodStart = TimezoneFixes.parseISOToJapanDate(lastRecord.startDate);
-                const cycle = userData.settings.cycle || 28;
-                const period = userData.settings.period || 5;
-                
-                // 複数月の予測をチェック
-                for (let cycleCount = 1; cycleCount <= 6; cycleCount++) {
-                    // 🌍 タイムゾーン対応: 予測計算
-                    const predictedStart = TimezoneFixes.addDaysJapan(lastPeriodStart, cycle * cycleCount);
-                    const predictedEnd = TimezoneFixes.addDaysJapan(predictedStart, period - 1);
-                    
-                    // 予測生理期間
-                    if (date >= predictedStart && date <= predictedEnd) {
-                        const dayNumber = TimezoneFixes.daysBetweenJapan(predictedStart, date) + 1;
-                        info.push(`🌸 生理予測 ${dayNumber}日目`);
-                        info.push(`予測期間: ${predictedStart.toLocaleDateString('ja-JP')} 〜 ${predictedEnd.toLocaleDateString('ja-JP')}`);
-                        break;
-                    }
-                    
-                    // 予測排卵日
-                    const predictedOvulation = TimezoneFixes.addDaysJapan(predictedStart, -14);
-                    
-                    if (TimezoneFixes.isSameDateJapan(date, predictedOvulation)) {
-                        info.push(`🥚 排卵予測日`);
-                        info.push(`妊娠しやすい時期です`);
-                        break;
-                    }
-                }
-            }
-            
-            // 従来の予測情報（APIから）
+            // 予測情報
             if (info.length === 0 && userData.predictions) {
                 if (userData.predictions.nextPeriod) {
-                    // 🌍 タイムゾーン対応: API予測データの変換
                     const nextStart = TimezoneFixes.parseISOToJapanDate(userData.predictions.nextPeriod.startDate);
                     const nextEnd = TimezoneFixes.parseISOToJapanDate(userData.predictions.nextPeriod.endDate);
                     
@@ -1127,7 +718,6 @@
                 }
                 
                 if (userData.predictions.ovulation) {
-                    // 🌍 タイムゾーン対応: 排卵予測データの変換
                     const ovulationDate = TimezoneFixes.parseISOToJapanDate(userData.predictions.ovulation.date);
                     
                     if (TimezoneFixes.isSameDateJapan(date, ovulationDate)) {
@@ -1153,110 +743,6 @@
             return info.join('<br>');
         }
 
-        // 🚀 カレンダー再描画関数（タイムゾーン対応）
-        function refreshCalendarDisplay() {
-            console.log('🔄 Refreshing calendar display...');
-            
-            // 全日付セルを取得
-            const allDayCells = document.querySelectorAll('.calendar-day:not(.empty-day)');
-            
-            console.log(`🔄 Found ${allDayCells.length} calendar cells to refresh`);
-            
-            allDayCells.forEach(dayCell => {
-                // 既存のクラスをクリア
-                dayCell.classList.remove('period', 'predicted-period', 'predicted-ovulation', 'ovulation');
-                
-                // データ属性をクリア
-                dayCell.removeAttribute('data-type');
-                dayCell.removeAttribute('data-priority');
-                dayCell.removeAttribute('data-cycle');
-                
-                // 日付を取得して再マーキング
-                const dayNumber = dayCell.querySelector('.day-number')?.textContent;
-                if (dayNumber) {
-                    // 親要素から年月を取得
-                    const monthElement = dayCell.closest('.calendar-month');
-                    const monthTitle = monthElement?.querySelector('.month-title')?.textContent;
-                    
-                    if (monthTitle) {
-                        const [year, month] = monthTitle.replace('年', '-').replace('月', '').split('-');
-                        const cellDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(dayNumber));
-                        
-                        // 再マーキング
-                        markCalendarDay(dayCell, cellDate);
-                    }
-                }
-            });
-            
-            console.log('✅ Calendar display refreshed');
-        }
-
-        // 🚀 データ更新時のカレンダー更新（外部から呼び出し用）
-        window.updateCalendarAfterSave = function() {
-            console.log('🚀 External calendar update triggered');
-            
-            // データを再取得してカレンダーを更新
-            if (currentUser && currentUser.userId) {
-                loadCalendarData(currentUser.userId)
-                    .then(() => {
-                        console.log('✅ Calendar data reloaded successfully');
-                        refreshCalendarDisplay();
-                    })
-                    .catch(error => {
-                        console.error('❌ Failed to reload calendar data:', error);
-                    });
-            }
-        };
-
-        // 🚀 タイムゾーンテスト機能
-        window.testTimezone = function() {
-            console.log('🧪 Testing timezone functions...');
-            
-            const testISOString = '2024-07-01T00:00:00.000Z';
-            const testRecord = { startDate: testISOString, endDate: '2024-07-05T00:00:00.000Z' };
-            
-            console.log('🌍 Timezone Test Results:');
-            console.log(`  Input ISO: ${testISOString}`);
-            
-            const parsed = TimezoneFixes.parseISOToJapanDate(testISOString);
-            console.log(`  Parsed:`, parsed);
-            console.log(`  Formatted: ${TimezoneFixes.formatJapanDate(parsed)}`);
-            
-            const today = TimezoneFixes.getTodayJapan();
-            console.log(`  Today:`, today);
-            console.log(`  Today formatted: ${TimezoneFixes.formatJapanDate(today)}`);
-            
-            TimezoneFixes.debugDateInfo(parsed, 'Parsed Date');
-            TimezoneFixes.debugDateInfo(today, 'Today');
-            
-            alert(`タイムゾーンテスト完了！\n入力: ${testISOString}\n出力: ${TimezoneFixes.formatJapanDate(parsed)}\n今日: ${TimezoneFixes.formatJapanDate(today)}`);
-        };
-
-        // 🚀 デバッグ用: カレンダー状態を確認
-        window.debugCalendarState = function() {
-            console.log('📊 Calendar Debug State:');
-            console.log('📅 Current userData:', userData);
-            console.log('👤 Current user:', currentUser);
-            
-            const allDayCells = document.querySelectorAll('.calendar-day:not(.empty-day)');
-            const markedCells = Array.from(allDayCells).filter(cell => 
-                cell.classList.contains('period') || 
-                cell.classList.contains('predicted-period') || 
-                cell.classList.contains('predicted-ovulation')
-            );
-            
-            console.log(`📊 Total cells: ${allDayCells.length}, Marked cells: ${markedCells.length}`);
-            
-            markedCells.forEach(cell => {
-                const dayNumber = cell.querySelector('.day-number')?.textContent;
-                const type = cell.getAttribute('data-type');
-                const priority = cell.getAttribute('data-priority');
-                const cycle = cell.getAttribute('data-cycle');
-                
-                console.log(`📍 Day ${dayNumber}: ${type} (priority: ${priority}, cycle: ${cycle})`);
-            });
-        };
-
         // モーダルを閉じる
         function closeDayModal() {
             document.getElementById('dayModal').style.display = 'none';
@@ -1269,7 +755,7 @@
             }
         };
 
-        // 🌍 カレンダーデータ読み込み（タイムゾーン対応）
+        // カレンダーデータ読み込み
         async function loadCalendarData(userId) {
             try {
                 console.log('Loading calendar data for user:', userId.substring(0, 8) + '...');
@@ -1277,34 +763,22 @@
                 const apiUrl = `https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net/getCalendarData?userId=${encodeURIComponent(userId)}`;
                 
                 const response = await fetch(apiUrl);
+                
                 if (!response.ok) {
-                    throw new Error('データの取得に失敗しました');
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
                 userData = await response.json();
                 console.log('Calendar data loaded:', userData);
                 
-                // 🌍 データのタイムゾーン情報をデバッグ
-                if (userData.records && userData.records.length > 0) {
-                    console.log('🌍 First record timezone debug:');
-                    const firstRecord = userData.records[0];
-                    console.log(`  Raw startDate: ${firstRecord.startDate}`);
-                    
-                    const parsedStart = TimezoneFixes.parseISOToJapanDate(firstRecord.startDate);
-                    console.log(`  Parsed startDate:`, parsedStart);
-                    console.log(`  Formatted: ${TimezoneFixes.formatJapanDate(parsedStart)}`);
-                    
-                    TimezoneFixes.debugDateInfo(parsedStart, 'First Record Start Date');
-                }
-                
-                // 複数月カレンダー生成
+                // カレンダー生成
                 generateMultipleCalendars();
                 
                 // スクロールイベント設定
                 const scrollContainer = document.getElementById('calendarScrollContainer');
                 scrollContainer.addEventListener('scroll', handleScroll);
                 
-                // 表示
+                // 表示切替
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('calendar-content').style.display = 'block';
                 
@@ -1337,43 +811,10 @@
             }
         }
 
-        // 🚀 他のページからの更新イベントをリッスン
-        window.addEventListener('storage', function(e) {
-            if (e.key === 'calendar_update_event') {
-                console.log('📢 Calendar update event received from storage');
-                
-                try {
-                    const eventData = JSON.parse(e.newValue);
-                    if (eventData && eventData.type === 'period_record_saved') {
-                        console.log('🔄 Processing calendar update event...');
-                        
-                        // カレンダー更新
-                        if (typeof window.updateCalendarAfterSave === 'function') {
-                            window.updateCalendarAfterSave();
-                        }
-                    }
-                } catch (error) {
-                    console.error('❌ Error processing calendar update event:', error);
-                }
-            }
-        });
-
-        // 🚀 PostMessage リスナー
-        window.addEventListener('message', function(e) {
-            if (e.data && e.data.type === 'period_record_saved') {
-                console.log('📢 Calendar update event received from PostMessage');
-                
-                // カレンダー更新
-                if (typeof window.updateCalendarAfterSave === 'function') {
-                    window.updateCalendarAfterSave();
-                }
-            }
-        });
-
         // LIFF初期化とカレンダー読み込み
         async function initializeLiffAndLoadCalendar() {
             try {
-                console.log('Initializing LIFF...');
+                console.log('Initializing LIFF with ID:', CALENDAR_LIFF_ID);
                 
                 await liff.init({ 
                     liffId: CALENDAR_LIFF_ID,
@@ -1383,7 +824,7 @@
                 console.log('LIFF initialized successfully');
                 
                 if (!liff.isLoggedIn()) {
-                    console.log('User not logged in, redirecting...');
+                    console.log('User not logged in, redirecting to login...');
                     liff.login();
                     return;
                 }
@@ -1402,12 +843,70 @@
                 console.error('LIFF initialization error:', error);
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('error').style.display = 'block';
+                
+                // エラーの詳細をログに出力
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack,
+                    liffId: CALENDAR_LIFF_ID,
+                    userAgent: navigator.userAgent,
+                    isInClient: typeof liff !== 'undefined' ? liff.isInClient() : 'LIFF not loaded'
+                });
             }
         }
+
+        // カレンダー更新（外部から呼び出し用）
+        window.updateCalendarAfterSave = function() {
+            console.log('🚀 External calendar update triggered');
+            
+            if (currentUser && currentUser.userId) {
+                loadCalendarData(currentUser.userId)
+                    .then(() => {
+                        console.log('✅ Calendar data reloaded successfully');
+                        generateMultipleCalendars();
+                    })
+                    .catch(error => {
+                        console.error('❌ Failed to reload calendar data:', error);
+                    });
+            }
+        };
+
+        // 他のページからの更新イベントをリッスン
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'calendar_update_event') {
+                console.log('📢 Calendar update event received from storage');
+                
+                try {
+                    const eventData = JSON.parse(e.newValue);
+                    if (eventData && eventData.type === 'period_record_saved') {
+                        console.log('🔄 Processing calendar update event...');
+                        
+                        if (typeof window.updateCalendarAfterSave === 'function') {
+                            window.updateCalendarAfterSave();
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Error processing calendar update event:', error);
+                }
+            }
+        });
+
+        // PostMessage リスナー
+        window.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'period_record_saved') {
+                console.log('📢 Calendar update event received from PostMessage');
+                
+                if (typeof window.updateCalendarAfterSave === 'function') {
+                    window.updateCalendarAfterSave();
+                }
+            }
+        });
 
         // ページ読み込み時に初期化
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Calendar page loaded');
+            console.log('User agent:', navigator.userAgent);
+            console.log('Is in LINE client:', typeof liff !== 'undefined' ? 'LIFF SDK loaded' : 'LIFF SDK not loaded');
             
             if (typeof liff !== 'undefined') {
                 initializeLiffAndLoadCalendar();
@@ -1418,24 +917,70 @@
             }
         });
 
-        // 🚀 グローバルアクセス用の関数エクスポート
-        window.calendarPageFunctions = {
-            updateCalendarAfterSave: window.updateCalendarAfterSave,
-            refreshCalendarDisplay: refreshCalendarDisplay,
-            testTimezone: window.testTimezone,
-            debugCalendarState: window.debugCalendarState,
-            TimezoneFixes: TimezoneFixes,
-            currentUser: () => currentUser,
-            userData: () => userData
+        // デバッグ用関数
+        window.debugCalendarState = function() {
+            console.log('📊 Calendar Debug State:');
+            console.log('📅 Current userData:', userData);
+            console.log('👤 Current user:', currentUser);
+            console.log('🔧 LIFF ID:', CALENDAR_LIFF_ID);
+            console.log('🌐 Is in LINE client:', typeof liff !== 'undefined' ? liff.isInClient() : 'LIFF not loaded');
+            console.log('🔐 Is logged in:', typeof liff !== 'undefined' ? liff.isLoggedIn() : 'LIFF not loaded');
+            
+            if (userData && userData.records) {
+                console.log(`📝 Records count: ${userData.records.length}`);
+                userData.records.forEach((record, index) => {
+                    console.log(`📍 Record ${index + 1}: ${record.startDate} - ${record.endDate || 'No end date'}`);
+                });
+            }
         };
 
-        // 🚀 開発用: コンソールからの簡単アクセス
+        // テスト用関数
+        window.testCalendarConnection = function() {
+            console.log('🧪 Testing calendar connection...');
+            
+            if (!currentUser || !currentUser.userId) {
+                console.error('❌ No current user');
+                return;
+            }
+            
+            console.log('👤 Current user ID:', currentUser.userId.substring(0, 8) + '...');
+            
+            // API接続テスト
+            const apiUrl = `https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net/getCalendarData?userId=${encodeURIComponent(currentUser.userId)}`;
+            console.log('🌐 API URL:', apiUrl);
+            
+            fetch(apiUrl)
+                .then(response => {
+                    console.log('📡 Response status:', response.status);
+                    console.log('📡 Response headers:', response.headers);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('✅ API response:', data);
+                })
+                .catch(error => {
+                    console.error('❌ API error:', error);
+                });
+        };
+
+        // グローバル関数エクスポート
+        window.calendarPageFunctions = {
+            updateCalendarAfterSave: window.updateCalendarAfterSave,
+            debugCalendarState: window.debugCalendarState,
+            testCalendarConnection: window.testCalendarConnection,
+            retryLoad: retryLoad,
+            TimezoneFixes: TimezoneFixes,
+            getCurrentUser: () => currentUser,
+            getUserData: () => userData
+        };
+
+        // 開発用コンソールメッセージ
         console.log('🚀 Calendar Page Functions Available:');
-        console.log('- window.updateCalendarAfterSave() - カレンダー更新');
-        console.log('- window.testTimezone() - タイムゾーン処理テスト');
         console.log('- window.debugCalendarState() - カレンダー状態確認');
+        console.log('- window.testCalendarConnection() - API接続テスト');
+        console.log('- window.updateCalendarAfterSave() - カレンダー更新');
         console.log('- window.calendarPageFunctions - 全機能アクセス');
-        console.log('🌍 Timezone fixes loaded and ready for calendar!');
+        console.log('🌍 Calendar page loaded and ready!');
 
     </script>
 </body>

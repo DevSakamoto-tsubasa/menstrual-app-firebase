@@ -650,33 +650,149 @@
         </div>
     </div>
     <script>
+        // 🌍 タイムゾーン対応版: 日付処理関数集（カレンダー用）
+        const TimezoneFixes = {
+            /**
+             * ISO文字列を日本時間の Date オブジェクトに変換
+             */
+            parseISOToJapanDate: function(isoString) {
+                if (!isoString) return null;
+                
+                console.log(`🌍 Parsing ISO string: ${isoString}`);
+                
+                // ISO文字列から日付部分を抽出
+                const dateOnly = isoString.split('T')[0];
+                
+                // 日本時間として解釈
+                return this.parseJapanDate(dateOnly);
+            },
+
+            /**
+             * 日付文字列を日本時間の Date オブジェクトに安全に変換
+             */
+            parseJapanDate: function(dateString) {
+                if (!dateString) return null;
+                
+                console.log(`🌍 Parsing date: ${dateString}`);
+                
+                // YYYY-MM-DD 形式の場合、日本時間として解釈
+                const [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
+                
+                // 日本時間で正確に作成（月は0から始まる）
+                const japanDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+                
+                console.log(`✅ Parsed to Japan date: ${japanDate.toLocaleDateString('ja-JP')}`);
+                return japanDate;
+            },
+
+            /**
+             * Date オブジェクトを日本時間の YYYY-MM-DD 形式に変換
+             */
+            formatJapanDate: function(date) {
+                if (!date || isNaN(date.getTime())) {
+                    return '日付不明';
+                }
+                
+                // 日本時間で年月日を取得
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                
+                const formatted = `${year}-${month}-${day}`;
+                console.log(`📅 Formatted Japan date: ${formatted}`);
+                return formatted;
+            },
+
+            /**
+             * 今日の日付を日本時間で取得
+             */
+            getTodayJapan: function() {
+                const now = new Date();
+                
+                // 日本時間で今日の日付を作成（時間は00:00:00）
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+                
+                console.log(`📅 Today Japan: ${today.toLocaleDateString('ja-JP')}`);
+                return today;
+            },
+
+            /**
+             * 日付が同じかチェック（日本時間ベース）
+             */
+            isSameDateJapan: function(date1, date2) {
+                if (!date1 || !date2) return false;
+                
+                return date1.getFullYear() === date2.getFullYear() &&
+                       date1.getMonth() === date2.getMonth() &&
+                       date1.getDate() === date2.getDate();
+            },
+
+            /**
+             * 日付に日数を加算（日本時間ベース）
+             */
+            addDaysJapan: function(date, days) {
+                if (!date || isNaN(date.getTime())) return null;
+                
+                const result = new Date(date);
+                result.setDate(result.getDate() + days);
+                
+                console.log(`📅 Added ${days} days to ${this.formatJapanDate(date)} = ${this.formatJapanDate(result)}`);
+                return result;
+            },
+
+            /**
+             * 日付間の日数を計算（日本時間ベース）
+             */
+            daysBetweenJapan: function(startDate, endDate) {
+                if (!startDate || !endDate) return 0;
+                
+                // 日付のみで計算（時間は無視）
+                const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+                const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+                
+                const timeDiff = end - start;
+                const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+                
+                console.log(`📊 Days between ${this.formatJapanDate(startDate)} and ${this.formatJapanDate(endDate)}: ${daysDiff}`);
+                return daysDiff;
+            },
+
+            /**
+             * デバッグ用: 日付情報を詳細表示
+             */
+            debugDateInfo: function(date, label = 'Date') {
+                if (!date) {
+                    console.log(`🐛 ${label}: null`);
+                    return;
+                }
+                
+                console.log(`🐛 ${label} Debug Info:`);
+                console.log(`   - toString(): ${date.toString()}`);
+                console.log(`   - toISOString(): ${date.toISOString()}`);
+                console.log(`   - toLocaleDateString('ja-JP'): ${date.toLocaleDateString('ja-JP')}`);
+                console.log(`   - getFullYear(): ${date.getFullYear()}`);
+                console.log(`   - getMonth(): ${date.getMonth()}`);
+                console.log(`   - getDate(): ${date.getDate()}`);
+                console.log(`   - getTimezoneOffset(): ${date.getTimezoneOffset()}`);
+            }
+        };
+
         // グローバル変数
         let userData = null;
-        let partnerData = null;
         let currentUser = null;
         let currentViewDate = new Date();
         const CALENDAR_LIFF_ID = '2007500037-Yb3edQ5o';
 
-        // 今日の日付
-        const today = new Date();
+        // 🌍 今日の日付（タイムゾーン対応）
+        const today = TimezoneFixes.getTodayJapan();
 
         // ユーザー情報表示
         function showUserInfo(profile) {
             const userInfoDiv = document.getElementById('userInfo');
-            userInfoDiv.innerHTML = `${profile.displayName} さん`;
+            userInfoDiv.innerHTML = `
+                👤 ${profile.displayName} さん
+            `;
             userInfoDiv.style.display = 'block';
-        }
-
-        // 今日に移動
-        function scrollToToday() {
-            const container = document.getElementById('calendarScrollContainer');
-            const todayElement = container.querySelector('.calendar-day.today');
-            if (todayElement) {
-                const monthElement = todayElement.closest('.calendar-month');
-                if (monthElement) {
-                    monthElement.scrollIntoView({ block: 'start', behavior: 'smooth' });
-                }
-            }
         }
 
         // 月の表示更新
@@ -759,13 +875,15 @@
                 dayNumber.textContent = date;
                 dayDiv.appendChild(dayNumber);
                 
-                // 今日判定
-                if (cellDate.toDateString() === today.toDateString()) {
+                // 🌍 今日判定（タイムゾーン対応）
+                if (TimezoneFixes.isSameDateJapan(cellDate, today)) {
                     dayDiv.classList.add('today');
                 }
                 
                 // データに基づくマーキング
-                markCalendarDay(dayDiv, cellDate);
+                if (userData) {
+                    markCalendarDay(dayDiv, cellDate);
+                }
                 
                 gridDiv.appendChild(dayDiv);
             }
@@ -774,23 +892,26 @@
             return monthDiv;
         }
 
-        // 🚀 カレンダー日付をマーキング（優先順位完全修正版）
+        // 🚀 カレンダー日付をマーキング（タイムゾーン修正版）
         function markCalendarDay(dayElement, date) {
             if (!userData || !userData.settings) return;
             
-            console.log(`🎯 Marking date: ${date.toDateString()}`);
+            console.log(`🎯 Marking date: ${TimezoneFixes.formatJapanDate(date)}`);
             
             // ⭐ 優先順位1: 実際の生理記録（最優先）
             if (userData.records && userData.records.length > 0) {
                 console.log(`🔍 Checking ${userData.records.length} actual records`);
                 
                 for (const record of userData.records) {
-                    const startDate = new Date(record.startDate);
-                    const endDate = record.endDate ? new Date(record.endDate) : null;
+                    // 🌍 タイムゾーン対応: ISO文字列を日本時間に変換
+                    const startDate = TimezoneFixes.parseISOToJapanDate(record.startDate);
+                    const endDate = record.endDate ? TimezoneFixes.parseISOToJapanDate(record.endDate) : null;
+                    
+                    console.log(`📊 Record: ${TimezoneFixes.formatJapanDate(startDate)} - ${endDate ? TimezoneFixes.formatJapanDate(endDate) : 'No end date'}`);
                     
                     // 実際の生理期間中
                     if (endDate && date >= startDate && date <= endDate) {
-                        console.log(`✅ Found actual period record: ${startDate.toDateString()} - ${endDate.toDateString()}`);
+                        console.log(`✅ Found actual period record: ${TimezoneFixes.formatJapanDate(startDate)} - ${TimezoneFixes.formatJapanDate(endDate)}`);
                         dayElement.classList.add('period');
                         dayElement.setAttribute('data-type', 'actual-period');
                         dayElement.setAttribute('data-priority', '1');
@@ -798,8 +919,8 @@
                     } 
                     
                     // 実際の生理開始日のみ（終了日未設定）
-                    if (!endDate && date.toDateString() === startDate.toDateString()) {
-                        console.log(`✅ Found actual period start: ${startDate.toDateString()}`);
+                    if (!endDate && TimezoneFixes.isSameDateJapan(date, startDate)) {
+                        console.log(`✅ Found actual period start: ${TimezoneFixes.formatJapanDate(startDate)}`);
                         dayElement.classList.add('period');
                         dayElement.setAttribute('data-type', 'actual-period-start');
                         dayElement.setAttribute('data-priority', '1');
@@ -816,13 +937,14 @@
                 console.log(`🔍 Checking API future predictions (${userData.predictions.futurePredictions.length} cycles)`);
                 
                 for (const prediction of userData.predictions.futurePredictions) {
-                    const predictedStart = new Date(prediction.period.startDate);
-                    const predictedEnd = new Date(prediction.period.endDate);
-                    const predictedOvulation = new Date(prediction.ovulation.date);
+                    // 🌍 タイムゾーン対応: API予測データの変換
+                    const predictedStart = TimezoneFixes.parseISOToJapanDate(prediction.period.startDate);
+                    const predictedEnd = TimezoneFixes.parseISOToJapanDate(prediction.period.endDate);
+                    const predictedOvulation = TimezoneFixes.parseISOToJapanDate(prediction.ovulation.date);
                     
                     // 予測生理期間
                     if (date >= predictedStart && date <= predictedEnd) {
-                        console.log(`✅ Found API predicted period: ${predictedStart.toDateString()} - ${predictedEnd.toDateString()}`);
+                        console.log(`✅ Found API predicted period: ${TimezoneFixes.formatJapanDate(predictedStart)} - ${TimezoneFixes.formatJapanDate(predictedEnd)}`);
                         dayElement.classList.add('predicted-period');
                         dayElement.setAttribute('data-type', 'api-predicted-period');
                         dayElement.setAttribute('data-priority', '2');
@@ -831,8 +953,8 @@
                     }
                     
                     // 予測排卵日
-                    if (date.toDateString() === predictedOvulation.toDateString()) {
-                        console.log(`✅ Found API predicted ovulation: ${predictedOvulation.toDateString()}`);
+                    if (TimezoneFixes.isSameDateJapan(date, predictedOvulation)) {
+                        console.log(`✅ Found API predicted ovulation: ${TimezoneFixes.formatJapanDate(predictedOvulation)}`);
                         dayElement.classList.add('predicted-ovulation');
                         dayElement.setAttribute('data-type', 'api-predicted-ovulation');
                         dayElement.setAttribute('data-priority', '2');
@@ -844,11 +966,12 @@
             
             // ⭐ 優先順位3: 次回生理予測（APIから）
             if (userData.predictions && userData.predictions.nextPeriod) {
-                const nextStart = new Date(userData.predictions.nextPeriod.startDate);
-                const nextEnd = new Date(userData.predictions.nextPeriod.endDate);
+                // 🌍 タイムゾーン対応: 次回予測データの変換
+                const nextStart = TimezoneFixes.parseISOToJapanDate(userData.predictions.nextPeriod.startDate);
+                const nextEnd = TimezoneFixes.parseISOToJapanDate(userData.predictions.nextPeriod.endDate);
                 
                 if (date >= nextStart && date <= nextEnd) {
-                    console.log(`✅ Found API next period prediction: ${nextStart.toDateString()} - ${nextEnd.toDateString()}`);
+                    console.log(`✅ Found API next period prediction: ${TimezoneFixes.formatJapanDate(nextStart)} - ${TimezoneFixes.formatJapanDate(nextEnd)}`);
                     dayElement.classList.add('predicted-period');
                     dayElement.setAttribute('data-type', 'api-next-period');
                     dayElement.setAttribute('data-priority', '3');
@@ -858,10 +981,11 @@
             
             // ⭐ 優先順位4: 次回排卵予測（APIから）
             if (userData.predictions && userData.predictions.ovulation) {
-                const ovulationDate = new Date(userData.predictions.ovulation.date);
+                // 🌍 タイムゾーン対応: 排卵予測データの変換
+                const ovulationDate = TimezoneFixes.parseISOToJapanDate(userData.predictions.ovulation.date);
                 
-                if (date.toDateString() === ovulationDate.toDateString()) {
-                    console.log(`✅ Found API ovulation prediction: ${ovulationDate.toDateString()}`);
+                if (TimezoneFixes.isSameDateJapan(date, ovulationDate)) {
+                    console.log(`✅ Found API ovulation prediction: ${TimezoneFixes.formatJapanDate(ovulationDate)}`);
                     dayElement.classList.add('predicted-ovulation');
                     dayElement.setAttribute('data-type', 'api-ovulation');
                     dayElement.setAttribute('data-priority', '4');
@@ -874,21 +998,20 @@
                 console.log(`🔧 Fallback: Using local calculation`);
                 
                 const lastRecord = userData.records[0];
-                const lastPeriodStart = new Date(lastRecord.startDate);
+                // 🌍 タイムゾーン対応: 最新記録の変換
+                const lastPeriodStart = TimezoneFixes.parseISOToJapanDate(lastRecord.startDate);
                 const cycle = userData.settings.cycle || 28;
                 const period = userData.settings.period || 5;
                 
                 // 最大3サイクル分だけ計算（パフォーマンス重視）
                 for (let cycleCount = 1; cycleCount <= 3; cycleCount++) {
-                    const predictedStart = new Date(lastPeriodStart);
-                    predictedStart.setDate(lastPeriodStart.getDate() + (cycle * cycleCount));
-                    
-                    const predictedEnd = new Date(predictedStart);
-                    predictedEnd.setDate(predictedStart.getDate() + period - 1);
+                    // 🌍 タイムゾーン対応: 予測日計算
+                    const predictedStart = TimezoneFixes.addDaysJapan(lastPeriodStart, cycle * cycleCount);
+                    const predictedEnd = TimezoneFixes.addDaysJapan(predictedStart, period - 1);
                     
                     // フォールバック予測生理期間
                     if (date >= predictedStart && date <= predictedEnd) {
-                        console.log(`✅ Found fallback predicted period: ${predictedStart.toDateString()} - ${predictedEnd.toDateString()}`);
+                        console.log(`✅ Found fallback predicted period: ${TimezoneFixes.formatJapanDate(predictedStart)} - ${TimezoneFixes.formatJapanDate(predictedEnd)}`);
                         dayElement.classList.add('predicted-period');
                         dayElement.setAttribute('data-type', 'fallback-predicted-period');
                         dayElement.setAttribute('data-priority', '5');
@@ -897,11 +1020,10 @@
                     }
                     
                     // フォールバック予測排卵日
-                    const predictedOvulation = new Date(predictedStart);
-                    predictedOvulation.setDate(predictedStart.getDate() - 14);
+                    const predictedOvulation = TimezoneFixes.addDaysJapan(predictedStart, -14);
                     
-                    if (date.toDateString() === predictedOvulation.toDateString()) {
-                        console.log(`✅ Found fallback predicted ovulation: ${predictedOvulation.toDateString()}`);
+                    if (TimezoneFixes.isSameDateJapan(date, predictedOvulation)) {
+                        console.log(`✅ Found fallback predicted ovulation: ${TimezoneFixes.formatJapanDate(predictedOvulation)}`);
                         dayElement.classList.add('predicted-ovulation');
                         dayElement.setAttribute('data-type', 'fallback-predicted-ovulation');
                         dayElement.setAttribute('data-priority', '5');
@@ -912,12 +1034,126 @@
             }
             
             // 🚀 何も見つからない場合
-            console.log(`❌ No marking found for date: ${date.toDateString()}`);
+            console.log(`❌ No marking found for date: ${TimezoneFixes.formatJapanDate(date)}`);
             dayElement.setAttribute('data-type', 'none');
             dayElement.setAttribute('data-priority', '0');
         }
 
-        // 🚀 カレンダー再描画関数（新しい記録保存後に呼び出し）
+        // 🌍 日付詳細を表示（タイムゾーン対応）
+        function showDayDetail(date) {
+            const modal = document.getElementById('dayModal');
+            const modalDate = document.getElementById('modalDate');
+            const modalInfo = document.getElementById('modalInfo');
+            
+            modalDate.textContent = date.toLocaleDateString('ja-JP', {
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            let info = getDayDetailInfo(date);
+            modalInfo.innerHTML = info;
+            
+            modal.style.display = 'block';
+        }
+
+        // 🌍 日付の詳細情報を取得（タイムゾーン対応）
+        function getDayDetailInfo(date) {
+            if (!userData) return '情報を読み込み中...';
+            
+            let info = [];
+            
+            // 実際の記録をチェック
+            for (const record of userData.records || []) {
+                // 🌍 タイムゾーン対応: 記録データの変換
+                const startDate = TimezoneFixes.parseISOToJapanDate(record.startDate);
+                const endDate = record.endDate ? TimezoneFixes.parseISOToJapanDate(record.endDate) : null;
+                
+                if (endDate && date >= startDate && date <= endDate) {
+                    const dayNumber = TimezoneFixes.daysBetweenJapan(startDate, date) + 1;
+                    info.push(`🌸 生理 ${dayNumber}日目`);
+                    info.push(`期間: ${startDate.toLocaleDateString('ja-JP')} 〜 ${endDate.toLocaleDateString('ja-JP')}`);
+                    break;
+                } else if (!endDate && TimezoneFixes.isSameDateJapan(date, startDate)) {
+                    info.push(`🌸 生理開始日`);
+                    break;
+                }
+            }
+            
+            // 🔧 複数月予測情報（生理・排卵のみ）
+            if (info.length === 0 && userData.records && userData.records.length > 0) {
+                const lastRecord = userData.records[0];
+                // 🌍 タイムゾーン対応: 最新記録の変換
+                const lastPeriodStart = TimezoneFixes.parseISOToJapanDate(lastRecord.startDate);
+                const cycle = userData.settings.cycle || 28;
+                const period = userData.settings.period || 5;
+                
+                // 複数月の予測をチェック
+                for (let cycleCount = 1; cycleCount <= 6; cycleCount++) {
+                    // 🌍 タイムゾーン対応: 予測計算
+                    const predictedStart = TimezoneFixes.addDaysJapan(lastPeriodStart, cycle * cycleCount);
+                    const predictedEnd = TimezoneFixes.addDaysJapan(predictedStart, period - 1);
+                    
+                    // 予測生理期間
+                    if (date >= predictedStart && date <= predictedEnd) {
+                        const dayNumber = TimezoneFixes.daysBetweenJapan(predictedStart, date) + 1;
+                        info.push(`🌸 生理予測 ${dayNumber}日目`);
+                        info.push(`予測期間: ${predictedStart.toLocaleDateString('ja-JP')} 〜 ${predictedEnd.toLocaleDateString('ja-JP')}`);
+                        break;
+                    }
+                    
+                    // 予測排卵日
+                    const predictedOvulation = TimezoneFixes.addDaysJapan(predictedStart, -14);
+                    
+                    if (TimezoneFixes.isSameDateJapan(date, predictedOvulation)) {
+                        info.push(`🥚 排卵予測日`);
+                        info.push(`妊娠しやすい時期です`);
+                        break;
+                    }
+                }
+            }
+            
+            // 従来の予測情報（APIから）
+            if (info.length === 0 && userData.predictions) {
+                if (userData.predictions.nextPeriod) {
+                    // 🌍 タイムゾーン対応: API予測データの変換
+                    const nextStart = TimezoneFixes.parseISOToJapanDate(userData.predictions.nextPeriod.startDate);
+                    const nextEnd = TimezoneFixes.parseISOToJapanDate(userData.predictions.nextPeriod.endDate);
+                    
+                    if (date >= nextStart && date <= nextEnd) {
+                        const dayNumber = TimezoneFixes.daysBetweenJapan(nextStart, date) + 1;
+                        info.push(`🌸 生理予測 ${dayNumber}日目`);
+                        info.push(`予測期間: ${nextStart.toLocaleDateString('ja-JP')} 〜 ${nextEnd.toLocaleDateString('ja-JP')}`);
+                    }
+                }
+                
+                if (userData.predictions.ovulation) {
+                    // 🌍 タイムゾーン対応: 排卵予測データの変換
+                    const ovulationDate = TimezoneFixes.parseISOToJapanDate(userData.predictions.ovulation.date);
+                    
+                    if (TimezoneFixes.isSameDateJapan(date, ovulationDate)) {
+                        info.push(`🥚 排卵予定日`);
+                        info.push(`妊娠しやすい時期です`);
+                    }
+                }
+            }
+            
+            // 今日の場合
+            if (TimezoneFixes.isSameDateJapan(date, today)) {
+                info.unshift(`✨ 今日`);
+                
+                if (userData.currentPhase) {
+                    info.push(`現在: ${userData.currentPhase.description}`);
+                }
+            }
+            
+            if (info.length === 0) {
+                info.push('特別な予定はありません');
+            }
+            
+            return info.join('<br>');
+        }
+
+        // 🚀 カレンダー再描画関数（タイムゾーン対応）
         function refreshCalendarDisplay() {
             console.log('🔄 Refreshing calendar display...');
             
@@ -972,6 +1208,30 @@
             }
         };
 
+        // 🚀 タイムゾーンテスト機能
+        window.testTimezone = function() {
+            console.log('🧪 Testing timezone functions...');
+            
+            const testISOString = '2024-07-01T00:00:00.000Z';
+            const testRecord = { startDate: testISOString, endDate: '2024-07-05T00:00:00.000Z' };
+            
+            console.log('🌍 Timezone Test Results:');
+            console.log(`  Input ISO: ${testISOString}`);
+            
+            const parsed = TimezoneFixes.parseISOToJapanDate(testISOString);
+            console.log(`  Parsed:`, parsed);
+            console.log(`  Formatted: ${TimezoneFixes.formatJapanDate(parsed)}`);
+            
+            const today = TimezoneFixes.getTodayJapan();
+            console.log(`  Today:`, today);
+            console.log(`  Today formatted: ${TimezoneFixes.formatJapanDate(today)}`);
+            
+            TimezoneFixes.debugDateInfo(parsed, 'Parsed Date');
+            TimezoneFixes.debugDateInfo(today, 'Today');
+            
+            alert(`タイムゾーンテスト完了！\n入力: ${testISOString}\n出力: ${TimezoneFixes.formatJapanDate(parsed)}\n今日: ${TimezoneFixes.formatJapanDate(today)}`);
+        };
+
         // 🚀 デバッグ用: カレンダー状態を確認
         window.debugCalendarState = function() {
             console.log('📊 Calendar Debug State:');
@@ -996,6 +1256,65 @@
                 console.log(`📍 Day ${dayNumber}: ${type} (priority: ${priority}, cycle: ${cycle})`);
             });
         };
+
+        // モーダルを閉じる
+        function closeDayModal() {
+            document.getElementById('dayModal').style.display = 'none';
+        }
+
+        // モーダル外クリックで閉じる
+        document.getElementById('dayModal').onclick = function(e) {
+            if (e.target === this) {
+                closeDayModal();
+            }
+        };
+
+        // 🌍 カレンダーデータ読み込み（タイムゾーン対応）
+        async function loadCalendarData(userId) {
+            try {
+                console.log('Loading calendar data for user:', userId.substring(0, 8) + '...');
+                
+                const apiUrl = `https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net/getCalendarData?userId=${encodeURIComponent(userId)}`;
+                
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error('データの取得に失敗しました');
+                }
+
+                userData = await response.json();
+                console.log('Calendar data loaded:', userData);
+                
+                // 🌍 データのタイムゾーン情報をデバッグ
+                if (userData.records && userData.records.length > 0) {
+                    console.log('🌍 First record timezone debug:');
+                    const firstRecord = userData.records[0];
+                    console.log(`  Raw startDate: ${firstRecord.startDate}`);
+                    
+                    const parsedStart = TimezoneFixes.parseISOToJapanDate(firstRecord.startDate);
+                    console.log(`  Parsed startDate:`, parsedStart);
+                    console.log(`  Formatted: ${TimezoneFixes.formatJapanDate(parsedStart)}`);
+                    
+                    TimezoneFixes.debugDateInfo(parsedStart, 'First Record Start Date');
+                }
+                
+                // 複数月カレンダー生成
+                generateMultipleCalendars();
+                
+                // スクロールイベント設定
+                const scrollContainer = document.getElementById('calendarScrollContainer');
+                scrollContainer.addEventListener('scroll', handleScroll);
+                
+                // 表示
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('calendar-content').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading calendar data:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+            }
+        }
+
         // スクロール検知で月表示を更新
         function handleScroll() {
             const container = document.getElementById('calendarScrollContainer');
@@ -1018,309 +1337,41 @@
             }
         }
 
-        // 日付詳細を表示
-        function showDayDetail(date) {
-            const modal = document.getElementById('dayModal');
-            const modalDate = document.getElementById('modalDate');
-            const modalInfo = document.getElementById('modalInfo');
-            
-            modalDate.textContent = date.toLocaleDateString('ja-JP', {
-                month: 'long',
-                day: 'numeric'
-            });
-            
-            let info = getDayDetailInfo(date);
-            modalInfo.innerHTML = info;
-            
-            modal.style.display = 'block';
-        }
-
-        // 日付の詳細情報を取得
-        function getDayDetailInfo(date) {
-            let info = [];
-            
-            // 今日の場合
-            if (date.toDateString() === today.toDateString()) {
-                info.push(`今日`);
-            }
-            
-            // 自分の生理情報
-            if (userData && userData.records) {
-                for (const record of userData.records) {
-                    const startDate = new Date(record.startDate);
-                    const endDate = record.endDate ? new Date(record.endDate) : null;
-                    
-                    if (endDate) {
-                        if (date >= startDate && date <= endDate) {
-                            const dayNumber = Math.floor((date - startDate) / (1000 * 60 * 60 * 24)) + 1;
-                            const totalDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-                            info.push(`あなたの生理 ${dayNumber}日目 (全${totalDays}日間)`);
-                            break;
-                        }
-                    } else {
-                        if (date.toDateString() === startDate.toDateString()) {
-                            info.push(`あなたの生理開始日`);
-                            break;
+        // 🚀 他のページからの更新イベントをリッスン
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'calendar_update_event') {
+                console.log('📢 Calendar update event received from storage');
+                
+                try {
+                    const eventData = JSON.parse(e.newValue);
+                    if (eventData && eventData.type === 'period_record_saved') {
+                        console.log('🔄 Processing calendar update event...');
+                        
+                        // カレンダー更新
+                        if (typeof window.updateCalendarAfterSave === 'function') {
+                            window.updateCalendarAfterSave();
                         }
                     }
+                } catch (error) {
+                    console.error('❌ Error processing calendar update event:', error);
                 }
             }
-            
-            // パートナーの生理情報
-            if (partnerData && partnerData.records) {
-                for (const record of partnerData.records) {
-                    const startDate = new Date(record.startDate);
-                    const endDate = record.endDate ? new Date(record.endDate) : null;
-                    
-                    if (endDate) {
-                        if (date >= startDate && date <= endDate) {
-                            const dayNumber = Math.floor((date - startDate) / (1000 * 60 * 60 * 24)) + 1;
-                            const totalDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-                            info.push(`パートナーの生理 ${dayNumber}日目 (全${totalDays}日間)`);
-                            break;
-                        }
-                    } else {
-                        if (date.toDateString() === startDate.toDateString()) {
-                            info.push(`パートナーの生理開始日`);
-                            break;
-                        }
-                    }
+        });
+
+        // 🚀 PostMessage リスナー
+        window.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'period_record_saved') {
+                console.log('📢 Calendar update event received from PostMessage');
+                
+                // カレンダー更新
+                if (typeof window.updateCalendarAfterSave === 'function') {
+                    window.updateCalendarAfterSave();
                 }
             }
-            
-            // 予測情報
-            if (userData && userData.records && userData.records.length > 0 && userData.settings) {
-                const lastRecord = userData.records[0];
-                const lastPeriodStart = new Date(lastRecord.startDate);
-                const cycle = userData.settings.cycle || 28;
-                const period = userData.settings.period || 5;
-                
-                for (let cycleCount = 1; cycleCount <= 3; cycleCount++) {
-                    const predictedStart = new Date(lastPeriodStart);
-                    predictedStart.setDate(lastPeriodStart.getDate() + (cycle * cycleCount));
-                    
-                    const predictedEnd = new Date(predictedStart);
-                    predictedEnd.setDate(predictedStart.getDate() + period - 1);
-                    
-                    if (date >= predictedStart && date <= predictedEnd) {
-                        const dayNumber = Math.floor((date - predictedStart) / (1000 * 60 * 60 * 24)) + 1;
-                        info.push(`生理予測 ${dayNumber}日目`);
-                        break;
-                    }
-                    
-                    const predictedOvulation = new Date(predictedStart);
-                    predictedOvulation.setDate(predictedStart.getDate() - 14);
-                    
-                    if (date.toDateString() === predictedOvulation.toDateString()) {
-                        info.push(`排卵予測日`);
-                        break;
-                    }
-                }
-            }
-            
-            if (info.length === 0) {
-                info.push('特別な予定はありません');
-            }
-            
-            return info.join('<br>');
-        }
+        });
 
-        // モーダルを閉じる
-        function closeDayModal() {
-            document.getElementById('dayModal').style.display = 'none';
-        }
-
-        // 過去生理追加モーダル表示
-        function showAddPastPeriodModal() {
-            // 今日から3ヶ月前を初期値に設定
-            const threeMonthsAgo = new Date();
-            threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-            
-            const startInput = document.getElementById('pastStartDate');
-            const endInput = document.getElementById('pastEndDate');
-            
-            startInput.value = threeMonthsAgo.toISOString().split('T')[0];
-            
-            // 開始日から5日後を終了日の初期値に
-            const endDate = new Date(threeMonthsAgo);
-            endDate.setDate(endDate.getDate() + 4);
-            endInput.value = endDate.toISOString().split('T')[0];
-            
-            // 過去3ヶ月までの制限を設定
-            const today = new Date();
-            const maxDate = new Date();
-            maxDate.setDate(today.getDate() - 1); // 昨日まで
-            startInput.max = maxDate.toISOString().split('T')[0];
-            endInput.max = maxDate.toISOString().split('T')[0];
-            
-            const minDate = new Date();
-            minDate.setMonth(today.getMonth() - 3);
-            startInput.min = minDate.toISOString().split('T')[0];
-            endInput.min = minDate.toISOString().split('T')[0];
-            
-            document.getElementById('addPastPeriodModal').style.display = 'block';
-        }
-
-        // 過去生理追加モーダル非表示
-        function hideAddPastPeriodModal() {
-            document.getElementById('addPastPeriodModal').style.display = 'none';
-            document.getElementById('pastPeriodMessage').style.display = 'none';
-        }
-
-        // 過去生理追加
-        async function addPastPeriod() {
-            const startDate = document.getElementById('pastStartDate').value;
-            const endDate = document.getElementById('pastEndDate').value;
-            const messageDiv = document.getElementById('pastPeriodMessage');
-            const addBtn = document.getElementById('addPastPeriodBtn');
-            
-            // バリデーション
-            if (!startDate || !endDate) {
-                showModalMessage('開始日と終了日を入力してください', 'error');
-                return;
-            }
-            
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            
-            if (start >= end) {
-                showModalMessage('開始日は終了日より前の日付を選択してください', 'error');
-                return;
-            }
-            
-            if (start > new Date()) {
-                showModalMessage('未来の日付は入力できません', 'error');
-                return;
-            }
-            
-            const diffDays = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
-            if (diffDays > 10) {
-                showModalMessage('生理期間は10日以内で入力してください', 'error');
-                return;
-            }
-            
-            try {
-                addBtn.disabled = true;
-                addBtn.textContent = '追加中...';
-                
-                const response = await fetch('https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net/addPastPeriod', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        userId: currentUser.userId,
-                        startDate: startDate,
-                        endDate: endDate,
-                        type: 'manual'
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showModalMessage('過去生理を追加しました', 'success');
-                    
-                    // カレンダーを再読み込み
-                    setTimeout(async () => {
-                        await loadCalendarData(currentUser.userId);
-                        hideAddPastPeriodModal();
-                    }, 1500);
-                } else {
-                    throw new Error(result.error || '過去生理の追加に失敗しました');
-                }
-                
-            } catch (error) {
-                console.error('Error adding past period:', error);
-                showModalMessage(`追加に失敗しました: ${error.message}`, 'error');
-            } finally {
-                addBtn.disabled = false;
-                addBtn.textContent = '追加';
-            }
-        }
-
-        // モーダル内メッセージ表示
-        function showModalMessage(message, type) {
-            const messageDiv = document.getElementById('pastPeriodMessage');
-            messageDiv.className = type === 'error' ? 'error-modal-message' : 'success-message';
-            messageDiv.innerHTML = message;
-            messageDiv.style.display = 'block';
-            
-            setTimeout(() => {
-                messageDiv.style.display = 'none';
-            }, 3000);
-        }
-
-        // モーダル外クリックで閉じる
-        document.getElementById('dayModal').onclick = function(e) {
-            if (e.target === this) {
-                closeDayModal();
-            }
-        };
-        
-        document.getElementById('addPastPeriodModal').onclick = function(e) {
-            if (e.target === this) {
-                hideAddPastPeriodModal();
-            }
-        };
-
-        // カレンダーデータ読み込み
-        async function loadCalendarData(userId) {
-            try {
-                console.log('Loading calendar data for user:', userId.substring(0, 8) + '...');
-                
-                const apiUrl = `https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net/getCalendarData?userId=${encodeURIComponent(userId)}`;
-                
-                const response = await fetch(apiUrl);
-                if (!response.ok) {
-                    throw new Error('データの取得に失敗しました');
-                }
-
-                userData = await response.json();
-                console.log('Calendar data loaded:', userData);
-                
-                // パートナーデータも取得
-                await loadPartnerData(userId);
-                
-                // 複数月カレンダー生成
-                generateMultipleCalendars();
-                
-                // スクロールイベント設定
-                const scrollContainer = document.getElementById('calendarScrollContainer');
-                scrollContainer.addEventListener('scroll', handleScroll);
-                
-                // 表示
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('calendar-content').style.display = 'block';
-                
-            } catch (error) {
-                console.error('Error loading calendar data:', error);
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('error').style.display = 'block';
-            }
-        }
-
-        // パートナーデータ読み込み
-        async function loadPartnerData(userId) {
-            try {
-                const response = await fetch(`https://asia-northeast1-menstrual-tracking-app.cloudfunctions.net/getPartnerCalendarData?userId=${encodeURIComponent(userId)}`);
-                
-                if (response.ok) {
-                    partnerData = await response.json();
-                    console.log('Partner data loaded:', partnerData);
-                } else {
-                    console.log('No partner data available');
-                    partnerData = null;
-                }
-                
-            } catch (error) {
-                console.error('Error loading partner data:', error);
-                partnerData = null;
-            }
-        }
-
-        // LIFF初期化とデータ読み込み
-        async function initializeLiffAndLoadData() {
+        // LIFF初期化とカレンダー読み込み
+        async function initializeLiffAndLoadCalendar() {
             try {
                 console.log('Initializing LIFF...');
                 
@@ -1337,12 +1388,14 @@
                     return;
                 }
                 
+                // プロフィール取得
                 const profile = await liff.getProfile();
                 console.log('User profile obtained:', profile.displayName);
                 
                 currentUser = profile;
                 showUserInfo(profile);
                 
+                // カレンダーデータ読み込み
                 await loadCalendarData(profile.userId);
                 
             } catch (error) {
@@ -1352,17 +1405,38 @@
             }
         }
 
-        // ページ読み込み時にデータを取得
+        // ページ読み込み時に初期化
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Calendar page loaded');
             
             if (typeof liff !== 'undefined') {
-                initializeLiffAndLoadData();
+                initializeLiffAndLoadCalendar();
             } else {
+                console.error('LIFF SDK not loaded');
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('error').style.display = 'block';
             }
         });
+
+        // 🚀 グローバルアクセス用の関数エクスポート
+        window.calendarPageFunctions = {
+            updateCalendarAfterSave: window.updateCalendarAfterSave,
+            refreshCalendarDisplay: refreshCalendarDisplay,
+            testTimezone: window.testTimezone,
+            debugCalendarState: window.debugCalendarState,
+            TimezoneFixes: TimezoneFixes,
+            currentUser: () => currentUser,
+            userData: () => userData
+        };
+
+        // 🚀 開発用: コンソールからの簡単アクセス
+        console.log('🚀 Calendar Page Functions Available:');
+        console.log('- window.updateCalendarAfterSave() - カレンダー更新');
+        console.log('- window.testTimezone() - タイムゾーン処理テスト');
+        console.log('- window.debugCalendarState() - カレンダー状態確認');
+        console.log('- window.calendarPageFunctions - 全機能アクセス');
+        console.log('🌍 Timezone fixes loaded and ready for calendar!');
+
     </script>
 </body>
 </html>
